@@ -3,59 +3,33 @@
 #include <errno.h>
 #include <string.h>
 #include "parser.h"
+#include "netlist.h"
 
-#define INITIAL_BUFFER_SIZE 1000
 
-#define KEYWORD_MODULE "module"
-
-#define KEYWORD_INPUT "input"
-#define KEYWORD_OUTPUT "output"
-#define KEYWORD_WIRE "wire"
-
-#define TYPE_INPUT 0
-#define TYPE_OUTPUT 1
-#define TYPE_WIRE 2
-
-#define KEYWORD_DFF "DFF"
-#define KEYWORD_INV "INV"
-#define KEYWORD_NAND "NAND"
-#define KEYWORD_NOR "NOR"
-#define KEYWORD_OR "OR"
-#define KEYWORD_AND "AND"
-
-#define TYPE_DFF 0
-#define TYPE_INV 1
-#define TYPE_NAND 2
-#define TYPE_NOR 3
-#define TYPE_OR 4
-#define TYPE_AND 5
-
-int parseVerilogFile(char* pathname) {
+int parseVerilogFile(char* pathname, NodesArray *nodes_array, NodesArray *primary_inputs_array, GatesArray *gates_array) {
     FILE* fptr;
     int i = 0, buffer_size = INITIAL_BUFFER_SIZE;
     char* buffer = NULL;
 
-    fptr = fopen(pathname, "r");
-
-    if (fptr == NULL) {
+    // Open the verilog file for reading
+    if ((fptr = fopen(pathname, "r")) == NULL) {
         perror("Error");
         fclose(fptr);
         exit(1);
     }
 
-    buffer = (char*)calloc(INITIAL_BUFFER_SIZE, sizeof(char));
-    if (buffer == NULL) {
+    // Create a read buffer
+    if ((buffer = (char*)calloc(INITIAL_BUFFER_SIZE, sizeof(char))) == NULL) {
         exit(1);
     }
 
     while (1) {
-        // Extend the buffer
+        // Extend the buffer when full
         if (i != 0 && (i % INITIAL_BUFFER_SIZE) == 0) {
-            buffer_size += INITIAL_BUFFER_SIZE;
-            buffer = (char*)realloc(buffer, buffer_size * sizeof(char));
-            if (buffer == NULL) {
+            if ((buffer = (char*)realloc(buffer, (buffer_size + INITIAL_BUFFER_SIZE) * sizeof(char))) == NULL) {
                 exit(1);
             }
+            buffer_size += INITIAL_BUFFER_SIZE;
         }
 
         // End-of-file
@@ -63,100 +37,267 @@ int parseVerilogFile(char* pathname) {
             break;
         }
 
+        // Save character to buffer
         if (buffer[i] == ';') {
             if (strstr(buffer, KEYWORD_MODULE)) {
                 // Do nothing
                 printf("Module found!\n");
             }
             else if (strstr(buffer, KEYWORD_INPUT)) {
-                parseNode(buffer, TYPE_INPUT);
+                parseAndCreateNodes(buffer, TYPE_INPUT, nodes_array, primary_inputs_array);
             }
             else if (strstr(buffer, KEYWORD_OUTPUT)) {
-                parseNode(buffer, TYPE_OUTPUT);
+                parseAndCreateNodes(buffer, TYPE_OUTPUT, nodes_array, primary_inputs_array);
             }
             else if (strstr(buffer, KEYWORD_WIRE)) {
-                parseNode(buffer, TYPE_WIRE);
+                parseAndCreateNodes(buffer, TYPE_WIRE, nodes_array, primary_inputs_array);
             }
             else if (strstr(buffer, KEYWORD_DFF)) {
-                parseGate(buffer, TYPE_DFF);
+                parseAndCreateGate(buffer, TYPE_DFF, nodes_array, primary_inputs_array, gates_array);
             }
             else if (strstr(buffer, KEYWORD_INV)) {
-                parseGate(buffer, TYPE_INV);
+                parseAndCreateGate(buffer, TYPE_INV, nodes_array, primary_inputs_array, gates_array);
             }
             else if (strstr(buffer, KEYWORD_NAND)) {
-                parseGate(buffer, TYPE_NAND);
+                parseAndCreateGate(buffer, TYPE_NAND, nodes_array, primary_inputs_array, gates_array);
             }
             else if (strstr(buffer, KEYWORD_NOR)) {
-                parseGate(buffer, TYPE_NOR);
+                parseAndCreateGate(buffer, TYPE_NOR, nodes_array, primary_inputs_array, gates_array);
             }
             else if (strstr(buffer, KEYWORD_OR)) {
-                parseGate(buffer, TYPE_OR);
+                parseAndCreateGate(buffer, TYPE_OR, nodes_array, primary_inputs_array, gates_array);
             }
             else if (strstr(buffer, KEYWORD_AND)) {
-                parseGate(buffer, TYPE_AND);
+                parseAndCreateGate(buffer, TYPE_AND, nodes_array, primary_inputs_array, gates_array);
             }
 
-            // Clear the buffer
+            // Recreate the buffer to clear it
             free(buffer);
-            buffer = (char*)calloc(sizeof(char), INITIAL_BUFFER_SIZE);
+            if ((buffer = (char*)calloc(sizeof(char), INITIAL_BUFFER_SIZE)) == NULL) {
+                exit(1);
+            }
             i = -1;
         }
 
         i++;
     }
+
+    free(buffer);
+    buffer_size = 0;
+
     return 0;
 }
 
-void parseNode(char *buffer, int type) {
+/**
+ * Expects a buffer with all inputs, or outputs, or wires. Reads the buffer token by token, which are the names of the
+ * nodes, for each node, it creates a new node structure and stores it in the related array.
+ * 
+ * If a node is an input, it stores it in the related primary inputs array.
+ * If a node is either a wire or output, it stores it in the related nodes array.
+ * 
+ * Example of a buffer:
+ * "  input GND, VDD, CK, G0, G1,
+ *          G2, G3;"
+ */
+void parseAndCreateNodes(char *buffer, int type, NodesArray *nodes_array, NodesArray *primary_inputs_array) {
     char *token = NULL;
     int f = 1;
 
-    token = strtok(buffer, ", ;");
+    token = strtok(buffer, ", ;\t\r\n");
 
-    printf("Node of type: %d\n", type);
     while (token != NULL) {
-        // Skip the first token (input, output or wire)
+        // Skip the first token - it's always the keyword
         if (f) {
             f = 0;
             token = strtok(0, ", ;");
             continue;
         }
 
-        if (!strcmp(token, "GND") || !strcmp(token, "VDD") || !strcmp(token, "CK")) {
+        // Skip specific input nodes
+        if (type == TYPE_INPUT && (!strcmp(token, "GND") || !strcmp(token, "VDD") || !strcmp(token, "CK"))) {
             token = strtok(0, ", ;");
             continue;
         }
 
-        printf("%s\n", token);
+        // Create a new node
+        Node *new_node = (Node*)calloc(1, sizeof(Node));
+        strncpy(new_node->name, token, 16);
+        new_node->name[15] = '\0';
+        new_node->type = type;
+        new_node->value = 0;
 
-        token = strtok(0, ", ;");
-    } 
-}
+        // Add the new node to related array
+        if (type == TYPE_INPUT) {
 
-void parseGate(char *buffer, int type) {
-    char *token = NULL;
-    int count = 2;
+            if ((primary_inputs_array->data = (Node**)realloc(primary_inputs_array->data, (primary_inputs_array->size + 1) * sizeof(Node*))) == NULL) {
+                exit(1);
+            }
+            primary_inputs_array->data[primary_inputs_array->size] = new_node;
+            primary_inputs_array->size++;
 
-    char name[16];
-
-    token = strtok(buffer, ", ;");
-
-    printf("Gate of type: %d\n", type);
-
-    while (token != NULL) {
-        if (count == 2) {
-            // Parse gate type of flip flop
-            count--;
-
-        } else if (count == 1) {
-            // Parse name
-            strcpy(name, token);
-            count--;
+        } else if (type == TYPE_OUTPUT || type == TYPE_WIRE) {
+            if ((nodes_array->data = (Node**)realloc(nodes_array->data, (nodes_array->size + 1) * sizeof(Node*))) == NULL) {
+                exit(1);
+            }
+            nodes_array->data[nodes_array->size] = new_node;
+            nodes_array->size++;
         }
-
-        // Handle adding gate
-        printf("%s\n", token);
 
         token = strtok(0, ", ;");
     }
+}
+
+/**
+ * Gets a buffer with the initialization of a gate, reads the buffer token by token, creates that gate
+ * and stores it to the related array.
+ * 
+ * TODO: check type inside function
+ * 
+ * Example of a buffer:
+ * "  NAND4_X1 U9343 ( .A1(n3806), .A2(n3807), .A3(n3808), .A4(n3809), .ZN(WX3232)
+         );"
+ */
+void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesArray *primary_inputs_array, GatesArray *gates_array) {
+    char *token = NULL;
+    char *saveptr1, *saveptr2;
+    int token_countdown = 2;
+    int inputs_index = 0;
+    int outputs_index = 0;
+
+    // Create new gate
+    Gate *new_gate = (Gate*)calloc(1, sizeof(Gate));
+    new_gate->name[15] = '\0';
+    new_gate->type = type;
+    new_gate->value = 0;
+
+    printf("%s\n", buffer);
+
+    token = strtok_r(buffer, ", ;\t\r\n", &saveptr1);
+
+    while (token != NULL) {
+        switch (token_countdown) {
+            // Get first token (instance type)
+            case 2:
+                // We have a DFF, set input to one
+                if (strstr(token, KEYWORD_DFF)) {
+                    new_gate->no_inputs = 1;
+                } else if (strstr(token, KEYWORD_INV)) {
+                    new_gate->no_inputs = 1;
+                } else {
+                    // Parse number of inputs from instance name (e.g.:NAND10_X1 -> 10 inputs)
+                    char no_inputs_str[16];
+                    no_inputs_str[15] = '\0';
+                    int i = 0;
+                    int j = 0;
+
+                    while (token[i] != '_') {
+                        if (token[i] >= '0' && token[i] <= '9') {
+                            no_inputs_str[j] = token[i];
+                            j++;
+                        }
+                        i++;
+                    }
+
+                    new_gate->no_inputs = atoi(no_inputs_str);
+                }
+
+                token_countdown--;
+
+                break;
+
+            // Get second token (instance name)
+            case 1:
+                // Parse name
+                strncpy(new_gate->name, token, 16);
+                new_gate->name[15] = '\0';
+                token_countdown--;
+
+                break;
+
+            // Parse the arguments
+            case 0:
+            default:
+                if (*token == '(' || *token == ')') {
+                    token = strtok_r(0, ", ;\t\r\n", &saveptr1);
+                    continue;
+                }
+ 
+                int is_output;
+                Node *new_node = NULL;
+                char *argument_name = NULL;
+                char *node_name = NULL;
+
+                // Get argument name
+                argument_name = strtok_r(token, " .()\t\r\n", &saveptr2);
+
+                // Ignore the clock
+                if (!strcmp(argument_name, "CK")) {
+                    token = strtok_r(0, ", ;\t\r\n", &saveptr1);
+                    continue;
+                }
+
+                is_output = (strcmp(argument_name, "ZN") == 0
+                             || strcmp(argument_name, "Q") == 0
+                             || strcmp(argument_name, "QN") == 0);
+
+                // Get the node name
+                node_name = strtok_r(0, " .()\t\r\n", &saveptr2);
+
+                // Current argument is output, save it to the outputs array
+                if (is_output) {
+                    if (new_gate->outputs == NULL) {
+                        if (new_gate->type == TYPE_DFF) {
+                            new_gate->outputs = (Node**)calloc(2, sizeof(Node*));
+                        } else {
+                            new_gate->outputs = (Node**)calloc(1, sizeof(Node*));
+                        }
+                    }
+
+                    new_node = getNodeByName(nodes_array, node_name);
+
+                    new_gate->outputs[outputs_index] = new_node;
+                    outputs_index++;
+
+                // Current argument is input, save it to the inputs array
+                } else {
+                    if (new_gate->inputs == NULL){
+                        new_gate->inputs = (Node**)calloc(new_gate->no_inputs, sizeof(Node*));
+                    }
+
+                    // Search for the node in nodes array
+                    new_node = getNodeByName(nodes_array, node_name);
+
+                    // When not found, also search in the primary inputs array
+                    if (new_node == NULL) {
+                        new_node = getNodeByName(primary_inputs_array, node_name);
+                    }
+
+                    new_gate->inputs[inputs_index] = new_node;
+                    inputs_index++;
+                }
+                break;
+        }
+
+        token = strtok_r(0, ", ;", &saveptr1);
+    }
+
+    // Store new gate and realloc another
+    if ((gates_array->data = (Gate**)realloc(gates_array->data, (gates_array->size + 1) * sizeof(Gate*))) == NULL) {
+        exit(1);
+    }
+    gates_array->data[gates_array->size] = new_gate;
+    gates_array->size++;
+}
+
+Node *getNodeByName(NodesArray *nodes_array, char *node_name) {
+    Node *curr_node = NULL;
+
+    for (int i = 0; i < nodes_array->size - 1; i++) {
+        curr_node = nodes_array->data[i];
+
+        if (!strcmp(curr_node->name, node_name))
+            return curr_node;
+    }
+
+    return NULL;
 }

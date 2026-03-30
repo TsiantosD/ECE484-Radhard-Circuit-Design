@@ -1,15 +1,59 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "parser.h"
+#include "netlist.h"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Usage: %s <path/to/file.v>\n", argv[0]);
         return 1;
     }
 
-    char* pathname = argv[1];
+    char *pathname = argv[1];
 
-    parseVerilogFile(pathname);
+    // Initialize nodes (internal and primary outputs)
+    NodesArray *nodes_array = (NodesArray*)calloc(1, sizeof(NodesArray));
+    if (nodes_array == NULL) {
+        exit(1);
+    }
+    nodes_array->size = 0;
+
+    // Initialize primary inputs
+    NodesArray *primary_inputs_array = (NodesArray*)calloc(1, sizeof(NodesArray));
+    if (primary_inputs_array == NULL) {
+        exit(1);
+    }
+
+    // Initialize gates array
+    GatesArray *gates_array = (GatesArray*)calloc(1, sizeof(GatesArray));
+    if (gates_array == NULL) {
+        exit(1);
+    }
+
+    parseVerilogFile(pathname, nodes_array, primary_inputs_array, gates_array);
+
+    for (int i = 0; i < gates_array->size - 1; i++) {
+        Gate *curr_gate = gates_array->data[i];
+
+        free(curr_gate->inputs);
+        free(curr_gate->outputs);
+        free(curr_gate);
+    }
+
+    free(gates_array);
+
+    for (int i = 0; i < primary_inputs_array->size - 1; i++) {
+        free(primary_inputs_array->data[i]);
+    }
+
+    free(primary_inputs_array);
+
+
+    for (int i = 0; i < nodes_array->size - 1; i++) {
+        free(nodes_array->data[i]);
+    }
+
+    free(nodes_array);
 
     return 0;
 }
