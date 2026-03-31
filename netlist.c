@@ -47,3 +47,41 @@ void printGatesArray(GatesArray *gates_array) {
         printf("\n--------------------------------------------------\n");
     }
 }
+
+void printLevelsArray(LevelsArray *levels_array) {
+    if (levels_array == NULL || levels_array->data == NULL) {
+        printf("Levels array is empty\n");
+        return;
+    }
+
+    printf("\n=== Levels Array Dump (Total Levels: %d) ===\n", levels_array->size);
+
+    for (int i = 0; i < levels_array->size; i++) {
+        GatesArray *curr_level_gates = levels_array->data[i];
+
+        if (curr_level_gates == NULL) {
+            printf("Level %2d: (null)\n", i + 1);
+            continue;
+        }
+
+        printf("Level %2d (Total Gates: %3d) | Gates: ", i + 1, curr_level_gates->size);
+        
+        if (curr_level_gates->size == 0) {
+            printf("None");
+        } else {
+            for (int j = 0; j < curr_level_gates->size; j++) {
+                Gate *curr_gate = curr_level_gates->data[j];
+                if (curr_gate != NULL) {
+                    printf("%s", curr_gate->name);
+                    if (j < curr_level_gates->size - 1) {
+                        printf(", ");
+                    }
+                } else {
+                    printf("(null)");
+                }
+            }
+        }
+        printf("\n");
+    }
+    printf("============================================\n\n");
+}

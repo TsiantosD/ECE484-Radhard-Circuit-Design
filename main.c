@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
 
     parseVerilogFile(pathname, nodes_array, primary_inputs_array, gates_array);
 
-    printGatesArray(gates_array);
-
+    //printGatesArray(gates_array);
+    
     // Initialize levels array
     LevelsArray *levels_array = (LevelsArray*)calloc(1, sizeof(LevelsArray)); 
     if (levels_array == NULL) {
@@ -46,6 +46,8 @@ int main(int argc, char *argv[]) {
 
     levelizeGates(levels_array, gates_array);
     printf("Levelization finished.");
+
+    printLevelsArray(levels_array);
 
     for (int i = 0; i < gates_array->size; i++) {
         Gate *curr_gate = gates_array->data[i];

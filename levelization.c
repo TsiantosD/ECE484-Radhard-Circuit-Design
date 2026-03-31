@@ -14,10 +14,13 @@ void levelizeGates(LevelsArray *levels_array, GatesArray* gates_array) {
         for (int i = 0; i < gates_array->size; i++) {
             Gate *curr_gate = gates_array->data[i];
 
-            printf("Curr gate: %s\n", curr_gate->name);
-
             // Skip the DFFs
             if (curr_gate->type == TYPE_DFF) {
+                continue;
+            }
+
+            // the level of the gate has been calculated
+            if (curr_gate->level != -1) {
                 continue;
             }
 
