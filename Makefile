@@ -1,11 +1,15 @@
+GCC := gcc
+CFLAGS := -Wall -fopenmp -g
+SRCS := main.c parser.c levelization.c netlist.c
+
 all:
-	gcc -Wall -fopenmp -g main.c parser.c -o main
+	$(GCC) $(CFLAGS) $(SRCS) -o main
 
 sanitize:
-	gcc -Wall -fopenmp -fsanitize=address -g main.c parser.c -o main
+	$(GCC) -fsanitize=address $(CFLAGS) $(SRCS) -o main
 
 fast:
-	gcc -Ofast -Wall -fopenmp -g main.c parser.c -o main
+	$(GCC) -Ofast $(CFLAGS) $(SRCS) -o main
 
 clean:
 	rm main

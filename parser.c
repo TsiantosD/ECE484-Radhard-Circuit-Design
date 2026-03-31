@@ -235,11 +235,6 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
             // Parse the arguments
             case 0:
             default:
-                // if (*token == '(' || *token == ')') {
-                //     token = strtok_r(0, ", ;\t\r\n", &saveptr1);
-                //     continue;
-                // }
- 
                 int is_output;
                 Node *curr_node = NULL;
                 char *argument_name = NULL;
@@ -248,6 +243,7 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
                 // Get argument name
                 argument_name = strtok_r(token, " .()\t\r\n", &saveptr2);
 
+                // Skip the parenthesis
                 if (argument_name == NULL) {
                     break;
                 }
