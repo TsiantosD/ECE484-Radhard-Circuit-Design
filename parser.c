@@ -104,8 +104,6 @@ int parseVerilogFile(char* pathname, NodesArray *nodes_array, NodesArray *primar
     return 0;
 }
 
-int found = 0;
-
 /**
  * Expects a buffer with all inputs, or outputs, or wires. Reads the buffer token by token, which are the names of the
  * nodes, for each node, it creates a new node structure and stores it in the related array.
@@ -231,10 +229,6 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
                 new_gate->name[15] = '\0';
                 token_countdown--;
 
-                if (strcmp(new_gate->name, "U12610") == 0) {
-                    found = 1;
-                }
-
                 break;
 
             // Parse the arguments
@@ -302,7 +296,6 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
         }
 
         if (token_countdown == 2 || token_countdown == 1) {
-            // 
             token = strtok_r(0, " \t\r\n(", &saveptr1);
         } else {
             token = strtok_r(0, ",;", &saveptr1);
