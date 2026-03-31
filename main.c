@@ -72,14 +72,12 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < levels_array->size; i++) {
         GatesArray *curr_gates_array = levels_array->data[i];
-
-        for (int j = 0; j < curr_gates_array->size; j++) {
-            free(curr_gates_array->data);
-        }
-
+        free(curr_gates_array->data);
         free(curr_gates_array);
     }
+    free(levels_array->data);
     free(levels_array);
+
 
     return 0;
 }

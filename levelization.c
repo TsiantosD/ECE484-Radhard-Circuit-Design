@@ -44,6 +44,11 @@ void levelizeGates(LevelsArray *levels_array, GatesArray* gates_array) {
             if (should_update) {
                 curr_gate->level = max_val + 1;
 
+                // set the level of the gate output 
+                if (curr_gate->type != TYPE_DFF) {
+                    curr_gate->outputs[0]->level = curr_gate->level;
+                } 
+
                 // Expand the levels array when needed
                 if (curr_gate->level > levels_array->size) {
                     levels_array->data = (GatesArray**)realloc(levels_array->data, curr_gate->level * sizeof(GatesArray*));
@@ -51,15 +56,15 @@ void levelizeGates(LevelsArray *levels_array, GatesArray* gates_array) {
                         exit(1);
                     }
                     levels_array->size = curr_gate->level;
-                    levels_array->data[curr_gate->level] = (GatesArray*)calloc(1, sizeof(GatesArray));
-                    if (levels_array->data[curr_gate->level] == NULL) {
+                    levels_array->data[curr_gate->level - 1] = (GatesArray*)calloc(1, sizeof(GatesArray));
+                    if (levels_array->data[curr_gate->level - 1] == NULL) {
                         exit(1);
                     }
-                    levels_array->data[curr_gate->level]->size = 0;
+                    levels_array->data[curr_gate->level - 1]->size = 0;
                 }
 
                 // Add the gate to the level array
-                GatesArray *curr_level = levels_array->data[curr_gate->level];
+                GatesArray *curr_level = levels_array->data[curr_gate->level - 1];
 
                 curr_level->data = (Gate**)realloc(curr_level->data, (curr_level->size + 1) * sizeof(Gate*));
                 if (curr_level->data == NULL) {
