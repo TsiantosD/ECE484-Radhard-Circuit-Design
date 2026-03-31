@@ -10,6 +10,7 @@ int parseVerilogFile(char* pathname, NodesArray *nodes_array, NodesArray *primar
     FILE* fptr;
     int i = 0, buffer_size = INITIAL_BUFFER_SIZE;
     char* buffer = NULL;
+    int curr_char;
 
     // Open the verilog file for reading
     if ((fptr = fopen(pathname, "r")) == NULL) {
@@ -25,20 +26,32 @@ int parseVerilogFile(char* pathname, NodesArray *nodes_array, NodesArray *primar
 
     while (1) {
         // Extend the buffer when full
-        if (i != 0 && (i % INITIAL_BUFFER_SIZE) == 0) {
-            if ((buffer = (char*)realloc(buffer, (buffer_size + INITIAL_BUFFER_SIZE) * sizeof(char))) == NULL) {
+        if (i == buffer_size - 1) {
+            buffer_size += INITIAL_BUFFER_SIZE;
+
+            char *tmp_buffer = (char*)realloc(buffer, buffer_size * sizeof(char));
+            if (tmp_buffer == NULL) {
                 exit(1);
             }
-            buffer_size += INITIAL_BUFFER_SIZE;
+            buffer = tmp_buffer;
         }
 
+        // Get current character
+        curr_char = fgetc(fptr);
+
         // End-of-file
-        if ((buffer[i] = fgetc(fptr)) == EOF) {
+        if (curr_char == EOF) {
             break;
         }
 
         // Save character to buffer
+        buffer[i] = (char)curr_char;
+
+        // Current character is semicolon, process the buffer
         if (buffer[i] == ';') {
+
+            buffer[i + 1] = '\0'; // add null char in the end
+
             if (strstr(buffer, KEYWORD_MODULE)) {
                 // Do nothing
                 printf("Module found!\n");
@@ -71,11 +84,13 @@ int parseVerilogFile(char* pathname, NodesArray *nodes_array, NodesArray *primar
                 parseAndCreateGate(buffer, TYPE_AND, nodes_array, primary_inputs_array, gates_array);
             }
 
-            // Recreate the buffer to clear it
+            // Recreate the buffer
             free(buffer);
             if ((buffer = (char*)calloc(sizeof(char), INITIAL_BUFFER_SIZE)) == NULL) {
                 exit(1);
             }
+            buffer_size = INITIAL_BUFFER_SIZE;
+
             i = -1;
         }
 
@@ -84,9 +99,12 @@ int parseVerilogFile(char* pathname, NodesArray *nodes_array, NodesArray *primar
 
     free(buffer);
     buffer_size = 0;
+    fclose(fptr);
 
     return 0;
 }
+
+int found = 0;
 
 /**
  * Expects a buffer with all inputs, or outputs, or wires. Reads the buffer token by token, which are the names of the
@@ -128,15 +146,16 @@ void parseAndCreateNodes(char *buffer, int type, NodesArray *nodes_array, NodesA
 
         // Add the new node to related array
         if (type == TYPE_INPUT) {
-
-            if ((primary_inputs_array->data = (Node**)realloc(primary_inputs_array->data, (primary_inputs_array->size + 1) * sizeof(Node*))) == NULL) {
+            primary_inputs_array->data = (Node**)realloc(primary_inputs_array->data, (primary_inputs_array->size + 1) * sizeof(Node*));
+            if (primary_inputs_array->data == NULL) {
                 exit(1);
             }
             primary_inputs_array->data[primary_inputs_array->size] = new_node;
             primary_inputs_array->size++;
 
         } else if (type == TYPE_OUTPUT || type == TYPE_WIRE) {
-            if ((nodes_array->data = (Node**)realloc(nodes_array->data, (nodes_array->size + 1) * sizeof(Node*))) == NULL) {
+            nodes_array->data = (Node**)realloc(nodes_array->data, (nodes_array->size + 1) * sizeof(Node*));
+            if (nodes_array->data == NULL) {
                 exit(1);
             }
             nodes_array->data[nodes_array->size] = new_node;
@@ -154,8 +173,8 @@ void parseAndCreateNodes(char *buffer, int type, NodesArray *nodes_array, NodesA
  * TODO: check type inside function
  * 
  * Example of a buffer:
- * "  NAND4_X1 U9343 ( .A1(n3806), .A2(n3807), .A3(n3808), .A4(n3809), .ZN(WX3232)
-         );"
+ * "  NAND4_X1 U12610 ( .A1(n5054), .A2(n5055), .A3(n5056), .A4(n5057), .ZN(
+        WX11050) );"
  */
 void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesArray *primary_inputs_array, GatesArray *gates_array) {
     char *token = NULL;
@@ -164,7 +183,7 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
     int inputs_index = 0;
     int outputs_index = 0;
 
-    // Create new gate
+    // Create the new gate
     Gate *new_gate = (Gate*)calloc(1, sizeof(Gate));
     new_gate->name[15] = '\0';
     new_gate->type = type;
@@ -172,7 +191,7 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
 
     printf("%s\n", buffer);
 
-    token = strtok_r(buffer, ", ;\t\r\n", &saveptr1);
+    token = strtok_r(buffer, " \t\r\n", &saveptr1);
 
     while (token != NULL) {
         switch (token_countdown) {
@@ -211,6 +230,10 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
                 strncpy(new_gate->name, token, 16);
                 new_gate->name[15] = '\0';
                 token_countdown--;
+
+                if (strcmp(new_gate->name, "U12610") == 0) {
+                    found = 1;
+                }
 
                 break;
 
@@ -278,7 +301,12 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
                 break;
         }
 
-        token = strtok_r(0, ", ;", &saveptr1);
+        if (token_countdown == 2 || token_countdown == 1) {
+            // 
+            token = strtok_r(0, " \t\r\n(", &saveptr1);
+        } else {
+            token = strtok_r(0, ",;", &saveptr1);
+        }
     }
 
     // Store new gate and realloc another

@@ -23,36 +23,38 @@ int main(int argc, char *argv[]) {
     if (primary_inputs_array == NULL) {
         exit(1);
     }
+    primary_inputs_array->size = 0;
 
     // Initialize gates array
     GatesArray *gates_array = (GatesArray*)calloc(1, sizeof(GatesArray));
     if (gates_array == NULL) {
         exit(1);
     }
+    gates_array->size = 0;
 
     parseVerilogFile(pathname, nodes_array, primary_inputs_array, gates_array);
 
-    for (int i = 0; i < gates_array->size - 1; i++) {
+    for (int i = 0; i < gates_array->size; i++) {
         Gate *curr_gate = gates_array->data[i];
 
         free(curr_gate->inputs);
         free(curr_gate->outputs);
         free(curr_gate);
     }
-
+    free(gates_array->data);
     free(gates_array);
 
-    for (int i = 0; i < primary_inputs_array->size - 1; i++) {
+    for (int i = 0; i < primary_inputs_array->size; i++) {
         free(primary_inputs_array->data[i]);
     }
-
+    free(primary_inputs_array->data);
     free(primary_inputs_array);
 
 
-    for (int i = 0; i < nodes_array->size - 1; i++) {
+    for (int i = 0; i < nodes_array->size; i++) {
         free(nodes_array->data[i]);
     }
-
+    free(nodes_array->data);
     free(nodes_array);
 
     return 0;
