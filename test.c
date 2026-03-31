@@ -7,7 +7,7 @@ int main() {
     char *argument_name = NULL;
     char *node_name = NULL;
 
-    char buffer[] = "  NAND4_X1 U12610 ( .A1(n5054), .A2(n5055), .A3(n5056), .A4(n5057), .ZN(\n        WX11050) );";
+    char buffer[] = "  NAND3_X1 U13 ( .A1(n4), .A2(n5), .A3(n10), .ZN(G17) );";
 
     token = strtok_r(buffer, " \t\r\n(", &saveptr1);
     printf("Gate Type: %s\n", token);

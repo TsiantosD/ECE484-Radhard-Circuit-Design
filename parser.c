@@ -125,13 +125,13 @@ void parseAndCreateNodes(char *buffer, int type, NodesArray *nodes_array, NodesA
         // Skip the first token - it's always the keyword
         if (f) {
             f = 0;
-            token = strtok(0, ", ;");
+            token = strtok(0, ", ;\t\r\n");
             continue;
         }
 
         // Skip specific input nodes
         if (type == TYPE_INPUT && (!strcmp(token, "GND") || !strcmp(token, "VDD") || !strcmp(token, "CK"))) {
-            token = strtok(0, ", ;");
+            token = strtok(0, ", ;\t\r\n");
             continue;
         }
 
@@ -141,6 +141,7 @@ void parseAndCreateNodes(char *buffer, int type, NodesArray *nodes_array, NodesA
         new_node->name[15] = '\0';
         new_node->type = type;
         new_node->value = 0;
+        new_node->level = (new_node->type == TYPE_INPUT) ? 0 : -1;
 
         // Add the new node to related array
         if (type == TYPE_INPUT) {
@@ -174,7 +175,8 @@ void parseAndCreateNodes(char *buffer, int type, NodesArray *nodes_array, NodesA
  * "  NAND4_X1 U12610 ( .A1(n5054), .A2(n5055), .A3(n5056), .A4(n5057), .ZN(
         WX11050) );"
  */
-void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesArray *primary_inputs_array, GatesArray *gates_array) {
+void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
+                        NodesArray *primary_inputs_array, GatesArray *gates_array) {
     char *token = NULL;
     char *saveptr1, *saveptr2;
     int token_countdown = 2;
@@ -186,8 +188,7 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
     new_gate->name[15] = '\0';
     new_gate->type = type;
     new_gate->value = 0;
-
-    printf("%s\n", buffer);
+    new_gate->level = -1;
 
     token = strtok_r(buffer, " \t\r\n", &saveptr1);
 
@@ -234,23 +235,26 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
             // Parse the arguments
             case 0:
             default:
-                if (*token == '(' || *token == ')') {
-                    token = strtok_r(0, ", ;\t\r\n", &saveptr1);
-                    continue;
-                }
+                // if (*token == '(' || *token == ')') {
+                //     token = strtok_r(0, ", ;\t\r\n", &saveptr1);
+                //     continue;
+                // }
  
                 int is_output;
-                Node *new_node = NULL;
+                Node *curr_node = NULL;
                 char *argument_name = NULL;
                 char *node_name = NULL;
 
                 // Get argument name
                 argument_name = strtok_r(token, " .()\t\r\n", &saveptr2);
 
+                if (argument_name == NULL) {
+                    break;
+                }
+
                 // Ignore the clock
                 if (!strcmp(argument_name, "CK")) {
-                    token = strtok_r(0, ", ;\t\r\n", &saveptr1);
-                    continue;
+                    break;
                 }
 
                 is_output = (strcmp(argument_name, "ZN") == 0
@@ -270,26 +274,33 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
                         }
                     }
 
-                    new_node = getNodeByName(nodes_array, node_name);
+                    curr_node = getNodeByName(nodes_array, node_name);
 
-                    new_gate->outputs[outputs_index] = new_node;
+                    // When an output of a FF is found, mark it as a level 0
+                    // and the value always 1 if it's Q or always 0 if it's QN
+                    if (type == TYPE_DFF) {
+                        curr_node->level = 0;
+                        curr_node->value = !strcmp(argument_name, "Q"); // it's either Q or QN
+                    }
+
+                    new_gate->outputs[outputs_index] = curr_node;
                     outputs_index++;
 
                 // Current argument is input, save it to the inputs array
                 } else {
-                    if (new_gate->inputs == NULL){
+                    if (new_gate->inputs == NULL) {
                         new_gate->inputs = (Node**)calloc(new_gate->no_inputs, sizeof(Node*));
                     }
 
                     // Search for the node in nodes array
-                    new_node = getNodeByName(nodes_array, node_name);
+                    curr_node = getNodeByName(nodes_array, node_name);
 
                     // When not found, also search in the primary inputs array
-                    if (new_node == NULL) {
-                        new_node = getNodeByName(primary_inputs_array, node_name);
+                    if (curr_node == NULL) {
+                        curr_node = getNodeByName(primary_inputs_array, node_name);
                     }
 
-                    new_gate->inputs[inputs_index] = new_node;
+                    new_gate->inputs[inputs_index] = curr_node;
                     inputs_index++;
                 }
                 break;
@@ -302,8 +313,9 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
         }
     }
 
-    // Store new gate and realloc another
-    if ((gates_array->data = (Gate**)realloc(gates_array->data, (gates_array->size + 1) * sizeof(Gate*))) == NULL) {
+    // Store the new gate
+    gates_array->data = (Gate**)realloc(gates_array->data, (gates_array->size + 1) * sizeof(Gate*));
+    if (gates_array->data == NULL) {
         exit(1);
     }
     gates_array->data[gates_array->size] = new_gate;
@@ -313,7 +325,7 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array, NodesAr
 Node *getNodeByName(NodesArray *nodes_array, char *node_name) {
     Node *curr_node = NULL;
 
-    for (int i = 0; i < nodes_array->size - 1; i++) {
+    for (int i = 0; i < nodes_array->size; i++) {
         curr_node = nodes_array->data[i];
 
         if (!strcmp(curr_node->name, node_name))
