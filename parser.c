@@ -187,7 +187,6 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
     Gate *new_gate = (Gate*)calloc(1, sizeof(Gate));
     new_gate->name[15] = '\0';
     new_gate->type = type;
-    new_gate->value = 0;
     new_gate->level = -1;
 
     token = strtok_r(buffer, " \t\r\n", &saveptr1);

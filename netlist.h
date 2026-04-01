@@ -5,14 +5,13 @@
 
 typedef struct Node_t {
     char name[16];
-    char value;
+    int value;
     unsigned short int type;
     int level;
 } Node;
 
 typedef struct Gate_t {
     char name[16];
-    char value;
     unsigned short int type;
     int no_inputs;
     int level;

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "parser.h"
 #include "netlist.h"
 #include "levelization.h"
@@ -45,9 +46,19 @@ int main(int argc, char *argv[]) {
 
     levelizeGates(levels_array, gates_array);
 
-    simulateCircuit(levels_array);
+    int i = 0;
+    for (long long int input_vector = 0; input_vector < pow(2, primary_inputs_array->size); input_vector++) {
+        long long int tmp_input_vector = (long long)input_vector;
+        for (int i = 0; i < primary_inputs_array->size; i++) {
+            primary_inputs_array->data[i]->value = tmp_input_vector % 2;
+            tmp_input_vector = tmp_input_vector>>1;
+        }   
+        simulateCircuit(levels_array);
+        printLevelsArray(levels_array);
+        printf("%d, %lf\n", i, pow(2, primary_inputs_array->size));
+        i = i + 1;
+    }
 
-    printLevelsArray(levels_array);
 
     // Clean up
     for (int i = 0; i < gates_array->size; i++) {

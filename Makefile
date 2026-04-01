@@ -1,5 +1,5 @@
 GCC := gcc
-CFLAGS := -Wall -fopenmp -g
+CFLAGS := -Wall -fopenmp -g -lm
 SRCS := main.c parser.c levelization.c netlist.c simulation.c
 
 all:

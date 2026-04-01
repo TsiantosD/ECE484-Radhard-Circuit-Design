@@ -10,8 +10,8 @@ void printLevelsArray(LevelsArray *levels_array) {
         return;
     }
 
-    printf("%-8s %-7s %-12s %-11s %-10s %-30s %s\n", 
-           "HEADER", "LEVEL", "GATE_NAME", "GATE_TYPE", "GATE_VAL", "INPUTS", "OUTPUTS");
+    printf("%-8s %-7s %-12s %-11s %-30s %s\n", 
+           "HEADER", "LEVEL", "GATE_NAME", "GATE_TYPE", "INPUTS", "OUTPUTS");
     
     for (int i = 0; i < levels_array->size; i++) {
         GatesArray *curr_level_gates = levels_array->data[i];
@@ -32,9 +32,8 @@ void printLevelsArray(LevelsArray *levels_array) {
                 for (int k = 0; k < curr_gate->no_inputs; k++) {
                     if (curr_gate->inputs[k] != NULL) {
                         char temp[32];
-                        snprintf(temp, sizeof(temp), "%s=%d%s", 
-                                 curr_gate->inputs[k]->name, 
-                                 curr_gate->inputs[k]->value,
+                        snprintf(temp, sizeof(temp), "%s=%s", 
+                                 curr_gate->inputs[k]->name,
                                  (k < curr_gate->no_inputs - 1) ? "," : ""); 
                         strcat(inputs_buf, temp);
                     }
@@ -62,12 +61,11 @@ void printLevelsArray(LevelsArray *levels_array) {
                 strcpy(outputs_buf, "NONE");
             }
 
-            printf("%-8s %-7d %-12s %-11d %-10d %-30s %s\n", 
+            printf("%-8s %-7d %-12s %-11d %-30s %s\n", 
                    "DATA",
                    i+1,                  
                    curr_gate->name, 
-                   curr_gate->type, 
-                   curr_gate->value,
+                   curr_gate->type,
                    inputs_buf,
                    outputs_buf);
         }
