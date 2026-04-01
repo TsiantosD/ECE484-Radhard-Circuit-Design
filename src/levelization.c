@@ -15,9 +15,9 @@ void levelizeGates(LevelsArray *levels_array, GatesArray* gates_array) {
             Gate *curr_gate = gates_array->data[i];
 
             // Skip the DFFs
-            if (curr_gate->type == TYPE_DFF) {
-                continue;
-            }
+            // if (curr_gate->type == TYPE_DFF) {
+            //     continue;
+            // }
 
             // The level of the gate has been calculated
             if (curr_gate->level != -1) {
@@ -47,10 +47,10 @@ void levelizeGates(LevelsArray *levels_array, GatesArray* gates_array) {
             if (should_update) {
                 curr_gate->level = max_val + 1;
 
-                // set the level of the gate output 
+                // Set the level of the gate's output
                 if (curr_gate->type != TYPE_DFF) {
                     curr_gate->outputs[0]->level = curr_gate->level;
-                } 
+                }
 
                 // Expand the levels array when needed
                 if (curr_gate->level > levels_array->size) {
@@ -66,15 +66,17 @@ void levelizeGates(LevelsArray *levels_array, GatesArray* gates_array) {
                     levels_array->data[curr_gate->level - 1]->size = 0;
                 }
 
-                // Add the gate to the level array
-                GatesArray *curr_level = levels_array->data[curr_gate->level - 1];
-
-                curr_level->data = (Gate**)realloc(curr_level->data, (curr_level->size + 1) * sizeof(Gate*));
-                if (curr_level->data == NULL) {
-                    exit(1);
+                // Add the gate to the level array, skip flip flops
+                if (curr_gate->type != TYPE_DFF) {
+                    GatesArray *curr_level = levels_array->data[curr_gate->level - 1];
+    
+                    curr_level->data = (Gate**)realloc(curr_level->data, (curr_level->size + 1) * sizeof(Gate*));
+                    if (curr_level->data == NULL) {
+                        exit(1);
+                    }
+                    curr_level->data[curr_level->size] = curr_gate;
+                    curr_level->size++;
                 }
-                curr_level->data[curr_level->size] = curr_gate;
-                curr_level->size++;
             }
         }
     }

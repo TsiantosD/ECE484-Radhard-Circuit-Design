@@ -4,7 +4,7 @@
 #include "parser.h"
 
 
-void printOutputCsv(long long int input_vector, NodesArray *primary_inputs, NodesArray *nodes) {
+void printNodesCurrentState(long long int input_vector, NodesArray *primary_inputs, NodesArray *nodes) {
     // Print the header exactly once
     if (input_vector == 0) {
         printf("VEC");
@@ -32,16 +32,67 @@ void printOutputCsv(long long int input_vector, NodesArray *primary_inputs, Node
     printf("\n");
 }
 
-void printLevelsArrayStateCsv(LevelsArray *levels_array, long long int input_vector) {
+void printLevelsArrayStateCsv(LevelsArray *levels_array, GatesArray *gates_array, long long int input_vector) {
     if (levels_array == NULL || levels_array->data == NULL) {
         if (input_vector == 0) {
-            printf("ERROR,Levels array is empty or uninitialized.\n");
+            fprintf(stderr, "ERROR,Levels array is empty or uninitialized.\n");
         }
         return;
     }
 
     if (input_vector == 0) {
-        printf("VECTOR,LEVEL,GATE_NAME,GATE_TYPE,INPUTS(name=val),OUTPUTS(name=val)\n");
+        fprintf(stderr, "VECTOR,LEVEL,GATE_NAME,GATE_TYPE,INPUTS(name=val),OUTPUTS(name=val)\n");
+    }
+
+    if (gates_array != NULL && gates_array->data != NULL) {
+        for (int i = 0; i < gates_array->size; i++) {
+            Gate *curr_gate = gates_array->data[i];
+
+            if (curr_gate != NULL && curr_gate->type == TYPE_DFF) {
+                char inputs_buf[256] = ""; 
+                if (curr_gate->inputs != NULL && curr_gate->no_inputs > 0) {
+                    for (int k = 0; k < curr_gate->no_inputs; k++) {
+                        if (curr_gate->inputs[k] != NULL) {
+                            char temp[32];
+                            snprintf(temp, sizeof(temp), "%s=%d%s", 
+                                     curr_gate->inputs[k]->name, 
+                                     curr_gate->inputs[k]->value,
+                                     (k < curr_gate->no_inputs - 1) ? " " : ""); 
+                            strcat(inputs_buf, temp);
+                        }
+                    }
+                } else {
+                    strcpy(inputs_buf, "NONE");
+                }
+
+                char outputs_buf[128] = "";
+                if (curr_gate->outputs != NULL) {
+                    if (curr_gate->outputs[0] != NULL) {
+                        char temp[32];
+                        snprintf(temp, sizeof(temp), "%s=%d", curr_gate->outputs[0]->name, curr_gate->outputs[0]->value);
+                        strcat(outputs_buf, temp);
+                    }
+
+                    if (curr_gate->outputs[1] != NULL) {
+                        char temp[32];
+                        snprintf(temp, sizeof(temp), " %s=%d", curr_gate->outputs[1]->name, curr_gate->outputs[1]->value);
+                        strcat(outputs_buf, temp);
+                    }
+                } 
+                
+                if (strlen(outputs_buf) == 0) {
+                    strcpy(outputs_buf, "NONE");
+                }
+
+                fprintf(stderr, "%lld,%d,%s,%d,%s,%s\n", 
+                       (long long int)input_vector,
+                       curr_gate->level,
+                       curr_gate->name, 
+                       curr_gate->type, 
+                       inputs_buf,
+                       outputs_buf);
+            }
+        }
     }
 
     for (int i = 0; i < levels_array->size; i++) {
@@ -93,9 +144,9 @@ void printLevelsArrayStateCsv(LevelsArray *levels_array, long long int input_vec
                 strcpy(outputs_buf, "NONE");
             }
 
-            printf("%lld,%d,%s,%d,%s,%s\n", 
+            fprintf(stderr, "%lld,%d,%s,%d,%s,%s\n", 
                    input_vector,
-                   i,                      
+                   i+1,
                    curr_gate->name, 
                    curr_gate->type, 
                    inputs_buf,

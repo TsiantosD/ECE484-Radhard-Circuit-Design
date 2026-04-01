@@ -14,9 +14,9 @@ void simulateCircuit(LevelsArray *levels_array) {
         for (int j = 0; j < curr_level->size; j++) {
             Gate *curr_gate = curr_level->data[j];
 
-            if (curr_gate->type == TYPE_DFF) {
-                simulateAndStoreFF(curr_gate);
-            }
+            // if (curr_gate->type == TYPE_DFF) {
+            //     simulateAndStoreFF(curr_gate);
+            // }
 
             // Simulate the gate and store the simulated value to the output node
             curr_gate->outputs[0]->value = simulateGate(curr_gate);

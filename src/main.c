@@ -46,14 +46,21 @@ int main(int argc, char *argv[]) {
 
     levelizeGates(levels_array, gates_array);
 
+    // Simulate the circuit with all input vectors
     for (long long int input_vector = 0; input_vector < pow(2, primary_inputs_array->size); input_vector++) {
         long long int tmp_input_vector = (long long)input_vector;
         for (int i = 0; i < primary_inputs_array->size; i++) {
             primary_inputs_array->data[i]->value = tmp_input_vector % 2;
-            tmp_input_vector = tmp_input_vector>>1;
-        }   
+            tmp_input_vector = tmp_input_vector >> 1;
+        }
+
         simulateCircuit(levels_array);
-        printOutputCsv(input_vector, primary_inputs_array, nodes_array);
+
+        // Display the nodes for verification purposes
+        printNodesCurrentState(input_vector, primary_inputs_array, nodes_array);
+
+        // Display the current circuit's state for visualization purposes
+        printLevelsArrayStateCsv(levels_array, gates_array, input_vector);
     }
 
     // Clean up

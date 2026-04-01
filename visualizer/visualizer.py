@@ -1,127 +1,170 @@
 import csv
-import networkx as nx
-import matplotlib.pyplot as plt
+import json
+import sys
+import subprocess
+import os # NEW: Import the OS module to handle directories
 
-# Map your C definitions to human-readable names and Matplotlib geometric shapes
-# Matplotlib markers: 's'=square, '>'='right triangle', 'p'=pentagon, 'D'=diamond, 'd'=thin diamond, '8'=octagon
-GATE_MAPPING = {
-    0: ('DFF', 's'),   
-    1: ('INV', '>'),   
-    2: ('NAND', 'p'),  
-    3: ('NOR', 'D'),   
-    4: ('OR', 'd'),    
-    5: ('AND', '8')    
-}
+# Define explicit top-level outputs (fixes G17 missing port)
+KNOWN_OUTPUTS = ['G17']
 
-def visualize_vector(csv_filename, target_vector):
-    G = nx.DiGraph()
+def get_yosys_type(gate_type, num_inputs):
+    """Safely map to standard shapes only if the pin count matches the skin."""
+    if gate_type == 0: return '$_DFF_P_'
+    if gate_type == 1: return '$_NOT_'
     
-    wire_sources = {}
-    wire_values = {}
+    if num_inputs <= 2:
+        mapping = {2: '$_NAND_', 3: '$_NOR_', 4: '$_OR_', 5: '$_AND_'}
+        return mapping.get(gate_type, 'GENERIC')
+    else:
+        mapping = {2: 'NAND', 3: 'NOR', 4: 'OR', 5: 'AND'}
+        return mapping.get(gate_type, 'GENERIC') + f"_{num_inputs}"
+
+def convert_to_yosys_json_and_svg(csv_filename, output_folder):
     
-    # --- STEP 1: Parse the CSV and build the Gates ---
+    # NEW: Create the target directory if it doesn't already exist
+    os.makedirs(output_folder, exist_ok=True)
+    print(f"📁 Saving all files to the '{output_folder}' directory...\n")
+
+    # 1. First, group all rows by their Vector number
+    vectors = {}
     with open(csv_filename, 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            if int(row['VECTOR']) != target_vector:
-                continue
-                
-            gate_name = row['GATE_NAME']
-            level = int(row['LEVEL'])
-            gate_type_int = int(row['GATE_TYPE'])
+            vec = int(row['VECTOR'])
+            if vec not in vectors:
+                vectors[vec] = []
+            vectors[vec].append(row)
             
-            # Fetch the name and shape from our dictionary (default to UNKNOWN/Circle if missing)
-            gate_str, gate_shape = GATE_MAPPING.get(gate_type_int, ('UNKNOWN', 'o'))
-            
-            # Add the gate as a node in the graph, storing its shape
-            G.add_node(gate_name, 
-                       level=level, 
-                       label=f"{gate_name}\n({gate_str})", 
-                       node_color="lightblue",
-                       shape=gate_shape)
-            
-            # Record the outputs this gate drives
-            outputs_raw = row['OUTPUTS(name=val)']
-            if outputs_raw != "NONE":
-                for out_str in outputs_raw.split():
-                    wire_name, wire_val = out_str.split('=')
-                    wire_sources[wire_name] = gate_name
-                    wire_values[wire_name] = int(wire_val)
-
-    # --- STEP 2: Connect the wires (Edges) and Primary Inputs ---
-    with open(csv_filename, 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if int(row['VECTOR']) != target_vector:
-                continue
-                
-            dest_gate = row['GATE_NAME']
-            inputs_raw = row['INPUTS(name=val)']
-            
-            if inputs_raw != "NONE":
-                for in_str in inputs_raw.split():
-                    wire_name, wire_val = in_str.split('=')
-                    
-                    # If the wire comes from a known gate, connect them
-                    if wire_name in wire_sources:
-                        source_node = wire_sources[wire_name]
-                        G.add_edge(source_node, dest_gate, 
-                                   label=wire_name, 
-                                   val=int(wire_val))
-                    else:
-                        # If the wire has no source, it's a Primary Input!
-                        # Create a pseudo-node for it at level -1 with a circle shape ('o')
-                        if not G.has_node(wire_name):
-                            G.add_node(wire_name, 
-                                       level=-1, 
-                                       label=f"INPUT\n{wire_name}", 
-                                       node_color="lightgreen",
-                                       shape='o')
-                        
-                        G.add_edge(wire_name, dest_gate, 
-                                   label=wire_name, 
-                                   val=int(wire_val))
-
-    # --- STEP 3: Draw the Graph ---
-    plt.figure(figsize=(14, 8))
-    plt.title(f"Circuit State for Vector {target_vector}", fontsize=16, fontweight='bold')
-
-    # Calculate layout using the 'level' attribute we assigned
-    pos = nx.multipartite_layout(G, subset_key="level", align="horizontal")
-    
-    # Extract node and edge attributes for drawing
-    node_labels = nx.get_node_attributes(G, 'label')
-    edge_labels = nx.get_edge_attributes(G, 'label')
-    edge_vals = nx.get_edge_attributes(G, 'val')
-    
-    # Color edges based on logic value: 1 = Red, 0 = Black
-    edge_colors = ['red' if val == 1 else 'black' for val in edge_vals.values()]
-    edge_widths = [2.0 if val == 1 else 1.0 for val in edge_vals.values()]
-
-    # DRAW NODES: Group by shape to bypass networkx limitation
-    shapes = set(nx.get_node_attributes(G, 'shape').values())
-    for shape in shapes:
-        # Filter nodes that match the current shape in the loop
-        node_list = [n for n in G.nodes() if G.nodes[n]['shape'] == shape]
-        node_colors = [G.nodes[n]['node_color'] for n in node_list]
+    # 2. Process each Vector independently
+    for vec, rows in vectors.items():
+        wire_ids = {}
+        netnames = {}
+        wire_values = {} 
+        current_wire_id = 2 
         
-        nx.draw_networkx_nodes(G, pos, 
-                               nodelist=node_list, 
-                               node_size=2000, 
-                               node_color=node_colors, 
-                               edgecolors="black", 
-                               node_shape=shape)
+        def get_wire_id(name):
+            nonlocal current_wire_id
+            if name not in wire_ids:
+                wire_ids[name] = current_wire_id
+                netnames[name] = {
+                    "hide_name": 0,
+                    "bits": [current_wire_id],
+                    "attributes": {}
+                }
+                current_wire_id += 1
+            return [wire_ids[name]]
 
-    # Draw Labels and Edges
-    nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=9, font_weight="bold")
-    nx.draw_networkx_edges(G, pos, arrowstyle="->", arrowsize=20, edge_color=edge_colors, width=edge_widths)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=9, font_color="blue")
+        cells = {}
+        all_inputs = set()
+        all_outputs = set()
+        
+        for row in rows:
+            gate_name = row['GATE_NAME']
+            gate_type = int(row['GATE_TYPE'])
+            
+            inputs_raw = row['INPUTS(name=val)']
+            outputs_raw = row['OUTPUTS(name=val)']
+            
+            in_pins = inputs_raw.split() if inputs_raw != "NONE" else []
+            num_inputs = len(in_pins)
+            
+            yosys_type = get_yosys_type(gate_type, num_inputs)
+            is_standard = yosys_type.startswith('$_')
+            
+            connections = {}
+            port_directions = {}
+            
+            # --- Handle Inputs ---
+            if num_inputs > 0:
+                if gate_type == 0:
+                    pin_names = ['D'] 
+                elif is_standard:
+                    pin_names = ['A', 'B'] 
+                else:
+                    pin_names = [f'IN{i}' for i in range(num_inputs)] 
+                
+                for idx, in_str in enumerate(in_pins):
+                    wire_name, wire_val = in_str.split('=')
+                    wire_values[wire_name] = wire_val 
+                    
+                    pin = pin_names[idx] if idx < len(pin_names) else f'IN{idx}'
+                    connections[pin] = get_wire_id(wire_name)
+                    port_directions[pin] = "input"
+                    all_inputs.add(wire_name)
+            
+            # --- Handle Outputs ---
+            if outputs_raw != "NONE":
+                out_pins = outputs_raw.split()
+                
+                if gate_type == 0:
+                    pin_names = ['Q', 'QN']
+                elif is_standard:
+                    pin_names = ['Y']
+                else:
+                    pin_names = ['OUT']
+                
+                for idx, out_str in enumerate(out_pins):
+                    wire_name, wire_val = out_str.split('=')
+                    wire_values[wire_name] = wire_val 
+                    
+                    pin = pin_names[idx] if idx < len(pin_names) else f'OUT{idx}'
+                    connections[pin] = get_wire_id(wire_name)
+                    port_directions[pin] = "output"
+                    all_outputs.add(wire_name)
+            
+            cells[gate_name] = {
+                "hide_name": 0,
+                "type": yosys_type,
+                "port_directions": port_directions,
+                "connections": connections
+            }
 
-    # Final adjustments
-    plt.axis("off")
-    plt.tight_layout()
-    plt.show()
+        primary_inputs = all_inputs - all_outputs
+        guessed_outputs = all_outputs - all_inputs
 
-# Run the visualization for Vector 0
+        primary_outputs = set(KNOWN_OUTPUTS).union(guessed_outputs)
+
+        ports = {}
+        for pi in primary_inputs:
+            val = wire_values.get(pi, "?")
+            port_label = f"{pi} = {val}"
+            ports[port_label] = {"direction": "input", "bits": get_wire_id(pi)}
+            
+        for po in primary_outputs:
+            val = wire_values.get(po, "?")
+            port_label = f"{po} = {val}"
+            ports[port_label] = {"direction": "output", "bits": get_wire_id(po)}
+
+        yosys_json = {
+            "modules": {
+                f"s27_vector_{vec}": {
+                    "ports": ports,
+                    "cells": cells,
+                    "netnames": netnames
+                }
+            }
+        }
+
+        # NEW: Construct the file paths inside the new folder
+        json_filename = os.path.join(output_folder, f"vec{vec}.json")
+        svg_filename = os.path.join(output_folder, f"vec{vec}.svg")
+        
+        with open(json_filename, 'w') as f:
+            json.dump(yosys_json, f, indent=2)
+            
+        # 3. Automatically run Netlistsvg to generate the image
+        print(f"Generating SVG for Vector {vec}...")
+        try:
+            subprocess.run(['npx', 'netlistsvg', json_filename, '-o', svg_filename], check=True, stdout=subprocess.DEVNULL)
+            print(f"  -> Saved {svg_filename}")
+        except FileNotFoundError:
+            print("  [!] Error: 'npx' or 'netlistsvg' not found on your system. JSON saved, but SVG skipped.")
+        except subprocess.CalledProcessError:
+            print("  [!] Error: netlistsvg failed to process the JSON.")
+
 if __name__ == "__main__":
-    visualize_vector('./visualization_data.csv', target_vector=0)
+    if len(sys.argv) < 3:
+        print("Usage: python csv_to_netlistsvg.py <input_data.csv> <output_folder_name>")
+        print("Example: python csv_to_netlistsvg.py visualization_data.csv s27_frames")
+    else:
+        convert_to_yosys_json_and_svg(sys.argv[1], sys.argv[2])
