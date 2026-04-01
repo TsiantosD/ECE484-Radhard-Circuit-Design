@@ -19,7 +19,7 @@ void levelizeGates(LevelsArray *levels_array, GatesArray* gates_array) {
                 continue;
             }
 
-            // the level of the gate has been calculated
+            // The level of the gate has been calculated
             if (curr_gate->level != -1) {
                 continue;
             }

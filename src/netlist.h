@@ -35,6 +35,7 @@ typedef struct NodesArray_t {
 } NodesArray;
 
 void printOutputCsv(long long int input_vector, NodesArray *primary_inputs, NodesArray *nodes);
+void printLevelsArrayStateCsv(LevelsArray *levels_array, long long int input_vector);
 void printLevelsArray(LevelsArray *levels_array);
 void printGatesArray(GatesArray *gates_array);
 
