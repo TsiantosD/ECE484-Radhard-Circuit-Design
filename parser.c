@@ -54,7 +54,6 @@ int parseVerilogFile(char* pathname, NodesArray *nodes_array, NodesArray *primar
 
             if (strstr(buffer, KEYWORD_MODULE)) {
                 // Do nothing
-                printf("Module found!\n");
             }
             else if (strstr(buffer, KEYWORD_INPUT)) {
                 parseAndCreateNodes(buffer, TYPE_INPUT, nodes_array, primary_inputs_array);

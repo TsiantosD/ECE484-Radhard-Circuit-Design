@@ -4,15 +4,42 @@
 #include "parser.h"
 
 
+void printOutputCsv(long long int input_vector, NodesArray *primary_inputs, NodesArray *nodes) {
+    // Print the header exactly once
+    if (input_vector == 0) {
+        printf("VEC");
+
+        // Print all primary input names
+        for (int i = 0; i < primary_inputs->size; i++) {
+            printf(",%s", primary_inputs->data[i]->name);
+        }
+
+        // Print all internal wire/output names
+        for (int i = 0; i < nodes->size; i++) {
+            printf(",%s", nodes->data[i]->name);
+        }
+        printf("\n");
+    }
+
+    // Print the values
+    printf("%lld", input_vector);
+    for (int i = 0; i < primary_inputs->size; i++) {
+        printf(",%d", primary_inputs->data[i]->value);
+    }
+    for (int i = 0; i < nodes->size; i++) {
+        printf(",%d", nodes->data[i]->value);
+    }
+    printf("\n");
+}
+
 void printLevelsArray(LevelsArray *levels_array) {
     if (levels_array == NULL || levels_array->data == NULL) {
-        printf("ERROR    Levels array is empty or uninitialized.\n");
+        printf("ERROR,Levels array is empty or uninitialized.\n");
         return;
     }
 
-    printf("%-8s %-7s %-12s %-11s %-30s %s\n", 
-           "HEADER", "LEVEL", "GATE_NAME", "GATE_TYPE", "INPUTS", "OUTPUTS");
-    
+    printf("LEVEL,GATE_NAME,GATE_TYPE,INPUTS(name=val),OUTPUTS(name=val)\n");
+
     for (int i = 0; i < levels_array->size; i++) {
         GatesArray *curr_level_gates = levels_array->data[i];
 
@@ -27,14 +54,16 @@ void printLevelsArray(LevelsArray *levels_array) {
                 continue;
             }
 
-            char inputs_buf[256] = ""; // Large enough to hold many pins safely
+            char inputs_buf[256] = ""; 
             if (curr_gate->inputs != NULL && curr_gate->no_inputs > 0) {
                 for (int k = 0; k < curr_gate->no_inputs; k++) {
                     if (curr_gate->inputs[k] != NULL) {
                         char temp[32];
-                        snprintf(temp, sizeof(temp), "%s=%s", 
-                                 curr_gate->inputs[k]->name,
-                                 (k < curr_gate->no_inputs - 1) ? "," : ""); 
+                        // Notice the space " " instead of "," for separation
+                        snprintf(temp, sizeof(temp), "%s=%d%s", 
+                                 curr_gate->inputs[k]->name, 
+                                 curr_gate->inputs[k]->value,
+                                 (k < curr_gate->no_inputs - 1) ? " " : ""); 
                         strcat(inputs_buf, temp);
                     }
                 }
@@ -52,7 +81,7 @@ void printLevelsArray(LevelsArray *levels_array) {
 
                 if (curr_gate->type == TYPE_DFF && curr_gate->outputs[1] != NULL) {
                     char temp[32];
-                    snprintf(temp, sizeof(temp), ",%s=%d", curr_gate->outputs[1]->name, curr_gate->outputs[1]->value);
+                    snprintf(temp, sizeof(temp), " %s=%d", curr_gate->outputs[1]->name, curr_gate->outputs[1]->value);
                     strcat(outputs_buf, temp);
                 }
             } 
@@ -61,11 +90,10 @@ void printLevelsArray(LevelsArray *levels_array) {
                 strcpy(outputs_buf, "NONE");
             }
 
-            printf("%-8s %-7d %-12s %-11d %-30s %s\n", 
-                   "DATA",
-                   i+1,                  
+            printf("%d,%s,%d,%s,%s\n", 
+                   i,                      
                    curr_gate->name, 
-                   curr_gate->type,
+                   curr_gate->type, 
                    inputs_buf,
                    outputs_buf);
         }

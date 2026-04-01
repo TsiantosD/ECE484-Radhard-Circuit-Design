@@ -46,7 +46,6 @@ int main(int argc, char *argv[]) {
 
     levelizeGates(levels_array, gates_array);
 
-    int i = 0;
     for (long long int input_vector = 0; input_vector < pow(2, primary_inputs_array->size); input_vector++) {
         long long int tmp_input_vector = (long long)input_vector;
         for (int i = 0; i < primary_inputs_array->size; i++) {
@@ -54,11 +53,8 @@ int main(int argc, char *argv[]) {
             tmp_input_vector = tmp_input_vector>>1;
         }   
         simulateCircuit(levels_array);
-        printLevelsArray(levels_array);
-        printf("%d, %lf\n", i, pow(2, primary_inputs_array->size));
-        i = i + 1;
+        printOutputCsv(input_vector, primary_inputs_array, nodes_array);
     }
-
 
     // Clean up
     for (int i = 0; i < gates_array->size; i++) {
