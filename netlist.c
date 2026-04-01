@@ -64,7 +64,7 @@ void printLevelsArray(LevelsArray *levels_array) {
 
             printf("%-8s %-7d %-12s %-11d %-10d %-30s %s\n", 
                    "DATA",
-                   i,                      
+                   i+1,                  
                    curr_gate->name, 
                    curr_gate->type, 
                    curr_gate->value,
