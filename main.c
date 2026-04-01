@@ -3,6 +3,7 @@
 #include "parser.h"
 #include "netlist.h"
 #include "levelization.h"
+#include "simulation.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -34,8 +35,6 @@ int main(int argc, char *argv[]) {
     gates_array->size = 0;
 
     parseVerilogFile(pathname, nodes_array, primary_inputs_array, gates_array);
-
-    //printGatesArray(gates_array);
     
     // Initialize levels array
     LevelsArray *levels_array = (LevelsArray*)calloc(1, sizeof(LevelsArray)); 
@@ -46,9 +45,12 @@ int main(int argc, char *argv[]) {
 
     levelizeGates(levels_array, gates_array);
     printf("Levelization finished.");
-
     printLevelsArray(levels_array);
 
+    simulateCircuit(levels_array);
+    printGatesArray(gates_array);
+
+    // Clean up
     for (int i = 0; i < gates_array->size; i++) {
         Gate *curr_gate = gates_array->data[i];
 
@@ -79,7 +81,6 @@ int main(int argc, char *argv[]) {
     }
     free(levels_array->data);
     free(levels_array);
-
 
     return 0;
 }

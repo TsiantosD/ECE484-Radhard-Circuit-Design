@@ -1,6 +1,6 @@
 GCC := gcc
 CFLAGS := -Wall -fopenmp -g
-SRCS := main.c parser.c levelization.c netlist.c
+SRCS := main.c parser.c levelization.c netlist.c simulation.c
 
 all:
 	$(GCC) $(CFLAGS) $(SRCS) -o main
