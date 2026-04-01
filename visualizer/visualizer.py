@@ -164,7 +164,7 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python csv_to_netlistsvg.py <input_data.csv> <output_folder_name>")
-        print("Example: python csv_to_netlistsvg.py visualization_data.csv s27_frames")
+        print("Usage: python visualizer.py <input_data.csv> <output_folder_name>")
+        print("Example: python visualizer.py visualization_data.csv s27_frames")
     else:
         convert_to_yosys_json_and_svg(sys.argv[1], sys.argv[2])
