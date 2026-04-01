@@ -55,23 +55,23 @@ int simulateGate(Gate *gate) {
 }
 
 int simulateAND(Gate *gate) {
-    int output = 1;
-
     for (int i = 0; i < gate->no_inputs; i++) {
-        output &= gate->inputs[i]->value;
+        if (gate->inputs[i]->value == 0) {
+            return 0;
+        }
     }
 
-    return output;
+    return 1;
 }
 
 int simulateOR(Gate *gate) {
-    int output = 0;
-
     for (int i = 0; i < gate->no_inputs; i++) {
-        output |= gate->inputs[i]->value;
+        if (gate->inputs[i]->value == 1) {
+            return 1;
+        }
     }
 
-    return output;
+    return 0;
 }
 
 int simulateINV(Gate *gate) {
@@ -79,23 +79,23 @@ int simulateINV(Gate *gate) {
 }
 
 int simulateNAND(Gate *gate) {
-    int output = 0;
-
-    for (int i = 0; i < gate->no_inputs; i++) {
-        output &= gate->inputs[i]->value;
+     for (int i = 0; i < gate->no_inputs; i++) {
+        if (gate->inputs[i]->value == 0) {
+            return 1;
+        }
     }
 
-    return !output;
+    return 0;
 }
 
 int simulateNOR(Gate *gate) {
-    int output = 1;
-
     for (int i = 0; i < gate->no_inputs; i++) {
-        output |= gate->inputs[i]->value;
+        if (gate->inputs[i]->value == 1) {
+            return 0;
+        }
     }
 
-    return !output;
+    return 1;
 }
 
 /**
