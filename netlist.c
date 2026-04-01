@@ -1,7 +1,78 @@
 #include <stdio.h>
+#include <string.h>
 #include "netlist.h"
 #include "parser.h"
 
+
+void printLevelsArray(LevelsArray *levels_array) {
+    if (levels_array == NULL || levels_array->data == NULL) {
+        printf("ERROR    Levels array is empty or uninitialized.\n");
+        return;
+    }
+
+    printf("%-8s %-7s %-12s %-11s %-10s %-30s %s\n", 
+           "HEADER", "LEVEL", "GATE_NAME", "GATE_TYPE", "GATE_VAL", "INPUTS", "OUTPUTS");
+    
+    for (int i = 0; i < levels_array->size; i++) {
+        GatesArray *curr_level_gates = levels_array->data[i];
+
+        if (curr_level_gates == NULL || curr_level_gates->data == NULL) {
+            continue;
+        }
+
+        for (int j = 0; j < curr_level_gates->size; j++) {
+            Gate *curr_gate = curr_level_gates->data[j];
+
+            if (curr_gate == NULL) {
+                continue;
+            }
+
+            char inputs_buf[256] = ""; // Large enough to hold many pins safely
+            if (curr_gate->inputs != NULL && curr_gate->no_inputs > 0) {
+                for (int k = 0; k < curr_gate->no_inputs; k++) {
+                    if (curr_gate->inputs[k] != NULL) {
+                        char temp[32];
+                        snprintf(temp, sizeof(temp), "%s=%d%s", 
+                                 curr_gate->inputs[k]->name, 
+                                 curr_gate->inputs[k]->value,
+                                 (k < curr_gate->no_inputs - 1) ? "," : ""); 
+                        strcat(inputs_buf, temp);
+                    }
+                }
+            } else {
+                strcpy(inputs_buf, "NONE");
+            }
+
+            char outputs_buf[128] = "";
+            if (curr_gate->outputs != NULL) {
+                if (curr_gate->outputs[0] != NULL) {
+                    char temp[32];
+                    snprintf(temp, sizeof(temp), "%s=%d", curr_gate->outputs[0]->name, curr_gate->outputs[0]->value);
+                    strcat(outputs_buf, temp);
+                }
+
+                if (curr_gate->type == TYPE_DFF && curr_gate->outputs[1] != NULL) {
+                    char temp[32];
+                    snprintf(temp, sizeof(temp), ",%s=%d", curr_gate->outputs[1]->name, curr_gate->outputs[1]->value);
+                    strcat(outputs_buf, temp);
+                }
+            } 
+            
+            if (strlen(outputs_buf) == 0) {
+                strcpy(outputs_buf, "NONE");
+            }
+
+            printf("%-8s %-7d %-12s %-11d %-10d %-30s %s\n", 
+                   "DATA",
+                   i,                      
+                   curr_gate->name, 
+                   curr_gate->type, 
+                   curr_gate->value,
+                   inputs_buf,
+                   outputs_buf);
+        }
+    }
+}
 
 void printGatesArray(GatesArray *gates_array) {
     if (gates_array == NULL || gates_array->data == NULL) {
@@ -46,42 +117,4 @@ void printGatesArray(GatesArray *gates_array) {
         }
         printf("\n--------------------------------------------------\n");
     }
-}
-
-void printLevelsArray(LevelsArray *levels_array) {
-    if (levels_array == NULL || levels_array->data == NULL) {
-        printf("Levels array is empty\n");
-        return;
-    }
-
-    printf("\n=== Levels Array Dump (Total Levels: %d) ===\n", levels_array->size);
-
-    for (int i = 0; i < levels_array->size; i++) {
-        GatesArray *curr_level_gates = levels_array->data[i];
-
-        if (curr_level_gates == NULL) {
-            printf("Level %2d: (null)\n", i + 1);
-            continue;
-        }
-
-        printf("Level %2d (Total Gates: %3d) | Gates: ", i + 1, curr_level_gates->size);
-        
-        if (curr_level_gates->size == 0) {
-            printf("None");
-        } else {
-            for (int j = 0; j < curr_level_gates->size; j++) {
-                Gate *curr_gate = curr_level_gates->data[j];
-                if (curr_gate != NULL) {
-                    printf("%s", curr_gate->name);
-                    if (j < curr_level_gates->size - 1) {
-                        printf(", ");
-                    }
-                } else {
-                    printf("(null)");
-                }
-            }
-        }
-        printf("\n");
-    }
-    printf("============================================\n\n");
 }

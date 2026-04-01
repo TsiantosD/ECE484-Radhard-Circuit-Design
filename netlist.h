@@ -35,7 +35,7 @@ typedef struct NodesArray_t {
     int size;
 } NodesArray;
 
-void printGatesArray(GatesArray *gates_array);
 void printLevelsArray(LevelsArray *levels_array);
+void printGatesArray(GatesArray *gates_array);
 
 #endif //ECE484_RADHARD_CIRCUIT_DESIGN_NETLIST_H

@@ -44,11 +44,10 @@ int main(int argc, char *argv[]) {
     levels_array->size = 0;
 
     levelizeGates(levels_array, gates_array);
-    printf("Levelization finished.");
-    printLevelsArray(levels_array);
 
     simulateCircuit(levels_array);
-    printGatesArray(gates_array);
+
+    printLevelsArray(levels_array);
 
     // Clean up
     for (int i = 0; i < gates_array->size; i++) {
