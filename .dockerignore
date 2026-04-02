@@ -1,0 +1,16 @@
+# Ignore compiled binaries and object files
+src/main
+src/*.o
+
+# Ignore output directories and logs
+outputs/
+*.log
+*.csv
+
+# Ignore local virtual environments and Node modules
+visualizer/venv/
+visualizer/node_modules/
+
+# Ignore git history
+.git/
+.gitignore

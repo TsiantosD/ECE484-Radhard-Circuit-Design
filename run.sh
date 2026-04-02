@@ -36,8 +36,8 @@ done
 echo "========================================"
 echo "Building C Simulator..."
 echo "========================================"
-make clean
-make -C src || { echo "Make failed in src/"; exit 1; }
+make clean -C src
+make sanitize -C src || { echo "Make failed in src/"; exit 1; }
 
 # 2. Select the test
 # If no test name was provided via positional arguments, prompt the user
