@@ -162,6 +162,75 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
         except subprocess.CalledProcessError:
             print("  [!] Error: netlistsvg failed to process the JSON.")
 
+    # 4. Generate interactive HTML viewer
+    max_vec = len(vectors) - 1
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Circuit Visualization Viewer</title>
+    <style>
+        body {{ text-align: center; font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }}
+        #viewer-container {{ background: white; padding: 20px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
+        img {{ max-width: 90vw; max-height: 80vh; }}
+        #controls {{ margin-bottom: 15px; font-size: 1.2em; }}
+        .key {{ background: #eee; padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; font-family: monospace; font-size: 0.9em; }}
+    </style>
+</head>
+<body>
+    <div id="viewer-container">
+        <div id="controls">
+            <strong>Vector: <span id="vecNum" style="color: #0056b3; font-size: 1.4em;">0</span> / {max_vec}</strong><br>
+            <span style="font-size: 0.85em; color: #555; margin-top: 5px; display: inline-block;">
+                Use <span class="key">&larr; Left</span> and <span class="key">Right &rarr;</span> arrow keys to navigate
+            </span>
+        </div>
+        <img id="schematic" src="vec0.svg" alt="Circuit Schematic">
+    </div>
+
+    <script>
+        let currentVec = 0;
+        const maxVec = {max_vec};
+        const imgElement = document.getElementById('schematic');
+        const vecText = document.getElementById('vecNum');
+
+        // Preload adjacent images for instantaneous swapping
+        function preload(vec) {{
+            if (vec >= 0 && vec <= maxVec) {{
+                new Image().src = 'vec' + vec + '.svg';
+            }}
+        }}
+
+        document.addEventListener('keydown', function(event) {{
+            let changed = false;
+            if (event.key === 'ArrowRight') {{
+                if (currentVec < maxVec) {{ currentVec++; changed = true; }}
+            }} else if (event.key === 'ArrowLeft') {{
+                if (currentVec > 0) {{ currentVec--; changed = true; }}
+            }}
+
+            if (changed) {{
+                imgElement.src = 'vec' + currentVec + '.svg';
+                vecText.innerText = currentVec;
+                // Preload the next ones in sequence
+                preload(currentVec + 1);
+                preload(currentVec - 1);
+            }}
+        }});
+        
+        // Initial preload
+        preload(1);
+    </script>
+</body>
+</html>
+"""
+
+    html_path = os.path.join(output_folder, "index.html")
+    with open(html_path, "w") as f:
+        f.write(html_content)
+    
+    print(f"\n🎉 Visualization Complete! Open this file in your browser to view:")
+    print(f"   file://{os.path.abspath(html_path)}")
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: python visualizer.py <input_data.csv> <output_folder_name>")
