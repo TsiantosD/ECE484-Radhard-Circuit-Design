@@ -2,10 +2,10 @@ import csv
 import json
 import sys
 import subprocess
-import os # NEW: Import the OS module to handle directories
+import os
 
 # Define explicit top-level outputs (fixes G17 missing port)
-KNOWN_OUTPUTS = ['G17']
+KNOWN_OUTPUTS = []
 
 def get_yosys_type(gate_type, num_inputs):
     """Safely map to standard shapes only if the pin count matches the skin."""
@@ -21,9 +21,9 @@ def get_yosys_type(gate_type, num_inputs):
 
 def convert_to_yosys_json_and_svg(csv_filename, output_folder):
     
-    # NEW: Create the target directory if it doesn't already exist
+    # Create the target directory if it doesn't already exist
     os.makedirs(output_folder, exist_ok=True)
-    print(f"📁 Saving all files to the '{output_folder}' directory...\n")
+    print(f"📁 Saving all files to the '{output_folder}' directory...")
 
     # 1. First, group all rows by their Vector number
     vectors = {}
@@ -145,7 +145,7 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
             }
         }
 
-        # NEW: Construct the file paths inside the new folder
+        # Construct the file paths inside the new folder
         json_filename = os.path.join(output_folder, f"vec{vec}.json")
         svg_filename = os.path.join(output_folder, f"vec{vec}.svg")
         
