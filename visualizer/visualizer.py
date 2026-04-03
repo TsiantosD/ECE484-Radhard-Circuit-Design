@@ -4,20 +4,13 @@ import sys
 import subprocess
 import os
 
-# Define explicit top-level outputs (fixes G17 missing port)
+# Define explicit top-level outputs 
 KNOWN_OUTPUTS = []
 
-def get_yosys_type(gate_type, num_inputs):
-    """Safely map to standard shapes only if the pin count matches the skin."""
-    if gate_type == 0: return '$_DFF_P_'
-    if gate_type == 1: return '$_NOT_'
-    
-    if num_inputs <= 2:
-        mapping = {2: '$_NAND_', 3: '$_NOR_', 4: '$_OR_', 5: '$_AND_'}
-        return mapping.get(gate_type, 'GENERIC')
-    else:
-        mapping = {2: 'NAND', 3: 'NOR', 4: 'OR', 5: 'AND'}
-        return mapping.get(gate_type, 'GENERIC') + f"_{num_inputs}"
+def get_gate_label(gate_type):
+    """Maps the integer gate type to a readable string label."""
+    mapping = {0: 'DFF', 1: 'NOT', 2: 'NAND', 3: 'NOR', 4: 'OR', 5: 'AND'}
+    return mapping.get(gate_type, 'GATE')
 
 def convert_to_yosys_json_and_svg(csv_filename, output_folder):
     
@@ -25,7 +18,7 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
     os.makedirs(output_folder, exist_ok=True)
     print(f"📁 Saving all files to the '{output_folder}' directory...")
 
-    # 1. First, group all rows by their Vector number
+    # 1. Group all rows by their Vector number
     vectors = {}
     with open(csv_filename, 'r') as f:
         reader = csv.DictReader(f)
@@ -47,7 +40,7 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
             if name not in wire_ids:
                 wire_ids[name] = current_wire_id
                 netnames[name] = {
-                    "hide_name": 0,
+                    "hide_name": 1, # Hide floating text, we will embed it in the pins!
                     "bits": [current_wire_id],
                     "attributes": {}
                 }
@@ -68,53 +61,54 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
             in_pins = inputs_raw.split() if inputs_raw != "NONE" else []
             num_inputs = len(in_pins)
             
-            yosys_type = get_yosys_type(gate_type, num_inputs)
-            is_standard = yosys_type.startswith('$_')
+            # Wraps the type in brackets to force a detailed Generic Box shape
+            safe_type = f"[{get_gate_label(gate_type)}]"
             
             connections = {}
             port_directions = {}
             
             # --- Handle Inputs ---
             if num_inputs > 0:
-                if gate_type == 0:
-                    pin_names = ['D'] 
-                elif is_standard:
-                    pin_names = ['A', 'B'] 
-                else:
-                    pin_names = [f'IN{i}' for i in range(num_inputs)] 
-                
                 for idx, in_str in enumerate(in_pins):
                     wire_name, wire_val = in_str.split('=')
                     wire_values[wire_name] = wire_val 
                     
-                    pin = pin_names[idx] if idx < len(pin_names) else f'IN{idx}'
-                    connections[pin] = get_wire_id(wire_name)
-                    port_directions[pin] = "input"
+                    if gate_type == 0:
+                        base_pin = "D" 
+                    elif gate_type == 1:
+                        base_pin = "A" 
+                    else:
+                        base_pin = ["A", "B", "C", "D", "E"][idx] if idx < 5 else f"in{idx}"
+                    
+                    # MAGIC TRICK: Embed the wire name and value directly into the port's label!
+                    pin_label = f"{base_pin}={wire_val} ({wire_name})"
+                    
+                    connections[pin_label] = get_wire_id(wire_name)
+                    port_directions[pin_label] = "input"
                     all_inputs.add(wire_name)
             
             # --- Handle Outputs ---
             if outputs_raw != "NONE":
                 out_pins = outputs_raw.split()
-                
-                if gate_type == 0:
-                    pin_names = ['Q', 'QN']
-                elif is_standard:
-                    pin_names = ['Y']
-                else:
-                    pin_names = ['OUT']
-                
                 for idx, out_str in enumerate(out_pins):
                     wire_name, wire_val = out_str.split('=')
                     wire_values[wire_name] = wire_val 
                     
-                    pin = pin_names[idx] if idx < len(pin_names) else f'OUT{idx}'
-                    connections[pin] = get_wire_id(wire_name)
-                    port_directions[pin] = "output"
+                    if gate_type == 0:
+                        base_pin = "Q" if idx == 0 else "QN"
+                    else:
+                        base_pin = "Y"
+                    
+                    # MAGIC TRICK: Embed the output state directly into the port's label!
+                    pin_label = f"({wire_name}) {base_pin}={wire_val}"
+                    
+                    connections[pin_label] = get_wire_id(wire_name)
+                    port_directions[pin_label] = "output"
                     all_outputs.add(wire_name)
             
             cells[gate_name] = {
                 "hide_name": 0,
-                "type": yosys_type,
+                "type": safe_type,
                 "port_directions": port_directions,
                 "connections": connections
             }
@@ -145,14 +139,12 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
             }
         }
 
-        # Construct the file paths inside the new folder
         json_filename = os.path.join(output_folder, f"vec{vec}.json")
         svg_filename = os.path.join(output_folder, f"vec{vec}.svg")
         
         with open(json_filename, 'w') as f:
             json.dump(yosys_json, f, indent=2)
             
-        # 3. Automatically run Netlistsvg to generate the image
         print(f"Generating SVG for Vector {vec}...")
         try:
             subprocess.run(['npx', 'netlistsvg', json_filename, '-o', svg_filename], check=True, stdout=subprocess.DEVNULL)
@@ -163,15 +155,17 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
             print("  [!] Error: netlistsvg failed to process the JSON.")
 
     # 4. Generate interactive HTML viewer
+    # 4. Generate interactive HTML viewer
     max_vec = len(vectors) - 1
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
     <title>Circuit Visualization Viewer</title>
     <style>
-        body {{ text-align: center; font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }}
+        body {{ text-align: center; font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; overflow: hidden; }}
         #viewer-container {{ background: white; padding: 20px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
-        img {{ max-width: 90vw; max-height: 80vh; }}
+        #svg-container {{ width: 90vw; height: 75vh; overflow: hidden; border: 1px solid #ccc; cursor: grab; position: relative; }}
+        #schematic {{ transform-origin: 0 0; transition: transform 0.05s linear; position: absolute; top: 0; left: 0; max-width: none; max-height: none; }}
         #controls {{ margin-bottom: 15px; font-size: 1.2em; }}
         .key {{ background: #eee; padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; font-family: monospace; font-size: 0.9em; }}
     </style>
@@ -181,19 +175,75 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
         <div id="controls">
             <strong>Vector: <span id="vecNum" style="color: #0056b3; font-size: 1.4em;">0</span> / {max_vec}</strong><br>
             <span style="font-size: 0.85em; color: #555; margin-top: 5px; display: inline-block;">
-                Use <span class="key">&larr; Left</span> and <span class="key">Right &rarr;</span> arrow keys to navigate
+                Use <span class="key">&larr;</span> / <span class="key">&rarr;</span> to navigate. Scroll to Zoom. Click & Drag to Pan.
             </span>
         </div>
-        <img id="schematic" src="vec0.svg" alt="Circuit Schematic">
+        <div id="svg-container">
+            <img id="schematic" src="vec0.svg" alt="Circuit Schematic">
+        </div>
     </div>
 
     <script>
         let currentVec = 0;
         const maxVec = {max_vec};
         const imgElement = document.getElementById('schematic');
+        const svgContainer = document.getElementById('svg-container');
         const vecText = document.getElementById('vecNum');
 
-        // Preload adjacent images for instantaneous swapping
+        // Zoom & Pan Variables
+        let scale = 1;
+        let panning = false;
+        let pointX = 0;
+        let pointY = 0;
+        let startX = 0;
+        let startY = 0;
+
+        function setTransform() {{
+            imgElement.style.transform = `translate(${{pointX}}px, ${{pointY}}px) scale(${{scale}})`;
+        }}
+
+        // Mouse Events for Panning
+        svgContainer.onmousedown = function (e) {{
+            e.preventDefault();
+            startX = e.clientX - pointX;
+            startY = e.clientY - pointY;
+            panning = true;
+            svgContainer.style.cursor = 'grabbing';
+        }};
+
+        svgContainer.onmouseup = function (e) {{
+            panning = false;
+            svgContainer.style.cursor = 'grab';
+        }};
+
+        svgContainer.onmouseleave = function (e) {{
+            panning = false;
+            svgContainer.style.cursor = 'grab';
+        }};
+
+        svgContainer.onmousemove = function (e) {{
+            e.preventDefault();
+            if (!panning) return;
+            pointX = e.clientX - startX;
+            pointY = e.clientY - startY;
+            setTransform();
+        }};
+
+        // Wheel Event for Zooming
+        svgContainer.onwheel = function (e) {{
+            e.preventDefault();
+            let xs = (e.clientX - svgContainer.getBoundingClientRect().left - pointX) / scale;
+            let ys = (e.clientY - svgContainer.getBoundingClientRect().top - pointY) / scale;
+            let delta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
+            
+            (delta > 0) ? (scale *= 1.2) : (scale /= 1.2);
+            scale = Math.max(0.1, Math.min(scale, 10)); // Restrict scale limits
+
+            pointX = e.clientX - svgContainer.getBoundingClientRect().left - xs * scale;
+            pointY = e.clientY - svgContainer.getBoundingClientRect().top - ys * scale;
+            setTransform();
+        }};
+
         function preload(vec) {{
             if (vec >= 0 && vec <= maxVec) {{
                 new Image().src = 'vec' + vec + '.svg';
@@ -211,13 +261,11 @@ def convert_to_yosys_json_and_svg(csv_filename, output_folder):
             if (changed) {{
                 imgElement.src = 'vec' + currentVec + '.svg';
                 vecText.innerText = currentVec;
-                // Preload the next ones in sequence
                 preload(currentVec + 1);
                 preload(currentVec - 1);
             }}
         }});
         
-        // Initial preload
         preload(1);
     </script>
 </body>
