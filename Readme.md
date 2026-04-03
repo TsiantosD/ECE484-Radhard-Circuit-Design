@@ -9,6 +9,26 @@
 ### Execution
 To run the simulation, use the `run.sh` script. To see all the available option and arguments, use the `-h` or `--help` option.
 
+For example, you can run the following:
+```bash
+./run.sh s27 -v
+```
+The `-v` is for the visualization of the circuit which can be opened in the browser by copy-pasting the HTML file.
+
+### Docker container
+To ensure portability, a `Dockerfile` was created. Please run the following command to build and then run the container (it might take some time to build):
+
+```bash
+# Build the container - only the first time
+docker build -t circuit-sim-test .
+
+# Open the container's terminal
+docker run -it --rm circuit-sim-test
+
+# Run the simulation
+./run.sh
+```
+
 ### The simulation
 
 The `src` directory contains the source code of the simulator written in C. The logic can be broken into three main parts:
@@ -17,7 +37,11 @@ The `src` directory contains the source code of the simulator written in C. The 
 2. **Levelization**: gets an array of gates and levelizes them using a levelization algorithm. Marks each gate with a level and then stores that gate to the related array in the levels array data structure.
 > **_Note_**: the flip flops are marked with a level for visualization purposes but are not saved in the levels array data structure.
 3. **Simulation**: once the gates are levelized, the simulation can begin. The simulation runs for all input vectors, one level at a time, calculating the output of each gante.
+> **_Note_**: Flip flops have a constant output of `0` for `ZN` and `1` for `Z` outputs.
 
 ### Data structures
+The data structures can be found in the `/src/netlist.h` header file.
+
 ![](/docs/data_structures.png)
 ![](/docs/data_types.png)
+
