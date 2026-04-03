@@ -15,6 +15,8 @@ For example, you can run the following:
 ```
 The `-v` is for the visualization of the circuit which can be opened in the browser by copy-pasting the HTML file.
 
+> **_Note_**: Don't forget to give execution permissions to the `run.sh` script with `sudo chmod +x run.sh`.
+
 ### Docker container
 To ensure portability, a `Dockerfile` was created. Please run the following command to build and then run the container (it might take some time to build):
 
@@ -39,9 +41,20 @@ The `src` directory contains the source code of the simulator written in C. The 
 3. **Simulation**: once the gates are levelized, the simulation can begin. The simulation runs for all input vectors, one level at a time, calculating the output of each gante.
 > **_Note_**: Flip flops have a constant output of `0` for `ZN` and `1` for `Z` outputs.
 
+### Validation
+**To validate the correctness of our simulator**, the `run.sh` script compares the C simulation results with the verilog simulation results.
+
+For the C simulation two files are stored in the `outputs/<simulation_name>/` directory:
+- `nodes.csv`: Used for validation. For each input vector, contains the value of every node.
+- `levels.csv`: Used for visualization. For each input vector, contains each gate's inputs, outputs and values.
+
+For the Verilog simulation, there are the following files in the `tests/<simulation_name>/` directory:
+- `<simulation_name>.v`: The original circuit to be simulated.
+- `tb_<simulation_name>.v`: The testbench of that circuit (only for `s27` and and `s298` for the moment).
+- `Makefile`: To compile and run the simulation using `iverilog` and `vvp`.
+
 ### Data structures
 The data structures can be found in the `/src/netlist.h` header file.
 
 ![](/docs/data_structures.png)
 ![](/docs/data_types.png)
-
