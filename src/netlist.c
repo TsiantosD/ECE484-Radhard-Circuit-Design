@@ -11,12 +11,26 @@ void printNodesCurrentState(long long int input_vector, NodesArray *primary_inpu
 
         // Print all primary input names
         for (int i = 0; i < primary_inputs->size; i++) {
-            printf(",%s", primary_inputs->data[i]->name);
+            char clean_name[128];
+            strncpy(clean_name, primary_inputs->data[i]->name, sizeof(clean_name) - 1);
+            clean_name[sizeof(clean_name) - 1] = '\0';
+            clean_name[strcspn(clean_name, "\r\n")] = 0; 
+            
+            if (strlen(clean_name) == 0) continue;
+            
+            printf(",%s", clean_name);
         }
 
         // Print all internal wire/output names
         for (int i = 0; i < nodes->size; i++) {
-            printf(",%s", nodes->data[i]->name);
+            char clean_name[128];
+            strncpy(clean_name, nodes->data[i]->name, sizeof(clean_name) - 1);
+            clean_name[sizeof(clean_name) - 1] = '\0';
+            clean_name[strcspn(clean_name, "\r\n")] = 0; 
+            
+            if (strlen(clean_name) == 0) continue;
+            
+            printf(",%s", clean_name);
         }
         printf("\n");
     }
@@ -24,9 +38,24 @@ void printNodesCurrentState(long long int input_vector, NodesArray *primary_inpu
     // Print the values
     printf("%lld", input_vector);
     for (int i = 0; i < primary_inputs->size; i++) {
+        char clean_name[128];
+        strncpy(clean_name, primary_inputs->data[i]->name, sizeof(clean_name) - 1);
+        clean_name[sizeof(clean_name) - 1] = '\0';
+        clean_name[strcspn(clean_name, "\r\n")] = 0;
+        
+        if (strlen(clean_name) == 0) continue; 
+        
         printf(",%d", primary_inputs->data[i]->value);
     }
+    
     for (int i = 0; i < nodes->size; i++) {
+        char clean_name[128];
+        strncpy(clean_name, nodes->data[i]->name, sizeof(clean_name) - 1);
+        clean_name[sizeof(clean_name) - 1] = '\0';
+        clean_name[strcspn(clean_name, "\r\n")] = 0;
+        
+        if (strlen(clean_name) == 0) continue; 
+        
         printf(",%d", nodes->data[i]->value);
     }
     printf("\n");
@@ -182,7 +211,6 @@ void printLevelsArray(LevelsArray *levels_array) {
                 for (int k = 0; k < curr_gate->no_inputs; k++) {
                     if (curr_gate->inputs[k] != NULL) {
                         char temp[32];
-                        // Notice the space " " instead of "," for separation
                         snprintf(temp, sizeof(temp), "%s=%d%s", 
                                  curr_gate->inputs[k]->name, 
                                  curr_gate->inputs[k]->value,
