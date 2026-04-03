@@ -20,7 +20,8 @@ zip -r "$ARCHIVE_NAME" . \
     -x "./outputs/*" \
     -x "./visualizer/venv/*" \
     -x "./visualizer/node_modules/*" \
-    -x "*/.git/*"
+    -x "./.git/*" \
+    -x "./.git"
 
 echo ""
 echo "✅ Successfully created $ARCHIVE_NAME"
