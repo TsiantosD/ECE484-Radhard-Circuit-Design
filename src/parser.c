@@ -141,6 +141,7 @@ void parseAndCreateNodes(char *buffer, int type, NodesArray *nodes_array, NodesA
         new_node->type = type;
         new_node->value = 0;
         new_node->level = (new_node->type == TYPE_INPUT) ? 0 : -1;
+        new_node->SET_should_hit = 0;
 
         // Add the new node to related array
         if (type == TYPE_INPUT) {
@@ -292,6 +293,13 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
                     // When not found, also search in the primary inputs array
                     if (curr_node == NULL) {
                         curr_node = getNodeByName(primary_inputs_array, node_name);
+                    }
+
+                    // When input of DFF is found, mark it
+                    if (type == TYPE_DFF) {
+                        curr_node->is_ff_input = 1;
+                    } else {
+                        curr_node->is_ff_input = 0;
                     }
 
                     new_gate->inputs[inputs_index] = curr_node;

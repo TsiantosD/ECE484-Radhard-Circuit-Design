@@ -8,6 +8,8 @@ typedef struct Node_t {
     int value;
     unsigned short int type;
     int level;
+    int SET_should_hit;
+    int is_ff_input;
 } Node;
 
 typedef struct Gate_t {

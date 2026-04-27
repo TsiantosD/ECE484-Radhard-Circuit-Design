@@ -1,7 +1,7 @@
 #include "netlist.h"
 #include "parser.h"
 #include "simulation.h"
-
+#include <stdio.h>
 
 /**
  * For each level, get each gate, run the simulation of that gate and
@@ -16,10 +16,21 @@ void simulateCircuit(LevelsArray *levels_array) {
 
             if (curr_gate->type == TYPE_DFF) {
                 simulateAndStoreFF(curr_gate);
+            } else {
+                // Simulate the gate and store the simulated value to the output node
+                curr_gate->outputs[0]->value = simulateGate(curr_gate);
             }
 
-            // Simulate the gate and store the simulated value to the output node
-            curr_gate->outputs[0]->value = simulateGate(curr_gate);
+            // Ignore FFs and gates connected to FFs
+            if (curr_gate->type == TYPE_DFF || curr_gate->outputs[0]->is_ff_input == 1) {
+                continue;
+            }
+
+            // When current gate is marked as hit, flip the value
+            if (curr_gate->outputs[0]->SET_should_hit == 1) {
+                printf("FLIP!\n");
+                curr_gate->outputs[0]->value = !curr_gate->outputs[0]->value;
+            }
         }
     }
 }
