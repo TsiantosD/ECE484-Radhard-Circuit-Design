@@ -107,8 +107,8 @@ int main(int argc, char *argv[]) {
 
             Gate *curr_gate = gates_array->data[j];
 
-            // Ignore FFs and gates connected to FFs
-            if (curr_gate->type == TYPE_DFF || curr_gate->outputs[0]->is_ff_input == 1) {
+            // Ignore FFs, gates connected to FFs, or gates connected to primary outputs
+            if (curr_gate->type == TYPE_DFF || curr_gate->outputs[0]->is_ff_input == 1 || curr_gate->outputs[0]->type == TYPE_OUTPUT) {
                 continue;
             }
 
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 // Compare the two nodes
-                if (simulated_dff_input->value != golden_dff_input->value) {
+                if (simulated_dff_input != NULL && simulated_dff_input->value != golden_dff_input->value) {
                     soft_error_counter++;
                     soft_error_found = 1;
                     break;
