@@ -109,6 +109,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 // Compare the two nodes
+                printf("Node: %s, simulated: %d, golden: %d\n", simulated_dff_input->name, simulated_dff_input->value, golden_dff_input->value);
                 if (simulated_dff_input->value != golden_dff_input->value) {
                     soft_error_counter++;
                     break;
@@ -120,10 +121,10 @@ int main(int argc, char *argv[]) {
         }
 
         // Display the nodes for verification purposes
-        printNodesCurrentState(input_vector, primary_inputs_array, nodes_array);
+        // printNodesCurrentState(input_vector, primary_inputs_array, nodes_array);
 
         // Display the current circuit's state for visualization purposes
-        printLevelsArrayStateCsv(levels_array, gates_array, input_vector);
+        // printLevelsArrayStateCsv(levels_array, gates_array, input_vector);
     }
 
     // Calculate Soft Error Rate
