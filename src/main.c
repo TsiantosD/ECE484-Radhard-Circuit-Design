@@ -8,6 +8,7 @@
 
 int main(int argc, char *argv[]) {
     long long soft_error_counter = 0;
+    long long strikes_counter = 0;
     double soft_error_rate = 0.0;
 
     if (argc < 2) {
@@ -62,7 +63,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    golden_dff_inputs_array->data = (Node**)realloc(golden_dff_inputs_array->data, dff_inputs_count * sizeof(Node**));
+    golden_dff_inputs_array->data = (Node**)realloc(golden_dff_inputs_array->data, dff_inputs_count * sizeof(Node*));
 
     for (int i = 0; i < dff_inputs_count; i++) {
         Node *new_node = (Node*)calloc(1, sizeof(Node));
@@ -71,15 +72,23 @@ int main(int argc, char *argv[]) {
     }
 
     // Simulate the circuit with all input vectors
-    for (long long int input_vector = 0; input_vector < pow(2, primary_inputs_array->size); input_vector++) {
+    long long int max_vectors = pow(2, primary_inputs_array->size);
+
+    for (long long int input_vector = 0; input_vector < max_vectors; input_vector++) {
         long long int tmp_input_vector = (long long)input_vector;
         for (int i = 0; i < primary_inputs_array->size; i++) {
             primary_inputs_array->data[i]->value = tmp_input_vector % 2;
             tmp_input_vector = tmp_input_vector >> 1;
         }
 
-        // Normal simulation to get the correct values
+        // Normal simulation to get the steady state
         simulateCircuit(levels_array);
+
+        // Display the nodes for verification purposes
+        printNodesCurrentState(input_vector, primary_inputs_array, nodes_array);
+
+        // Display the current circuit's state for visualization purposes
+        printLevelsArrayStateCsv(levels_array, gates_array, input_vector);
 
         // Copy correct DFF input values to golden array
         for (int j = 0, c = 0; j < nodes_array->size; j++) {
@@ -97,7 +106,8 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // Hit each gate not connected directly to a DFF
+        // Hit each gate not connected directly to a DFF. If at least one soft error is found,
+        // skip this steady state and continue to the next one.
         int soft_error_found = 0;
 
         for (int j = 0; j < gates_array->size; j++) {
@@ -117,6 +127,9 @@ int main(int argc, char *argv[]) {
 
             // Run the simulation to consider if a soft error is propagated
             simulateCircuit(levels_array);
+
+            // Increment strikes counter
+            strikes_counter++;
 
             // Compare new and old DFF inputs
             for (int k = 0; k < golden_dff_inputs_array->size; k++) {
@@ -145,20 +158,12 @@ int main(int argc, char *argv[]) {
             // Unmark hit gate
             curr_gate->outputs[0]->SET_should_hit = 0;
         }
-
-        simulateCircuit(levels_array);
-
-        // Display the nodes for verification purposes
-        printNodesCurrentState(input_vector, primary_inputs_array, nodes_array);
-
-        // Display the current circuit's state for visualization purposes
-        printLevelsArrayStateCsv(levels_array, gates_array, input_vector);
     }
 
     // Calculate Soft Error Rate
-    soft_error_rate = soft_error_counter / pow(2, primary_inputs_array->size);
+    soft_error_rate = soft_error_counter / (pow(2, primary_inputs_array->size) * strikes_counter);
 
-    // printf("SER: %f\nCounter: %lld\n", soft_error_rate, soft_error_counter);
+    printf("SER: %f\nCounter: %lld\n", soft_error_rate, soft_error_counter);
 
     // Clean up
     for (int i = 0; i < golden_dff_inputs_array->size; i++) {
