@@ -28,9 +28,7 @@ void simulateCircuit(LevelsArray *levels_array) {
 
             // When current gate is marked as hit, flip the value
             if (curr_gate->outputs[0]->SET_should_hit == 1) {
-                printf("FLIP %s %d %d\n", curr_gate->outputs[0]->name, curr_gate->outputs[0]->value, !curr_gate->outputs[0]->value);
                 curr_gate->outputs[0]->value = !curr_gate->outputs[0]->value;
-                printf("FLIPPED %s %d %d\n", curr_gate->outputs[0]->name, curr_gate->outputs[0]->value, !curr_gate->outputs[0]->value);
             }
         }
     }
