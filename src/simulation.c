@@ -21,11 +21,6 @@ void simulateCircuit(LevelsArray *levels_array) {
                 curr_gate->outputs[0]->value = simulateGate(curr_gate);
             }
 
-            // Ignore FFs and gates connected to FFs
-            if (curr_gate->type == TYPE_DFF || curr_gate->outputs[0]->is_ff_input == 1) {
-                continue;
-            }
-
             // When current gate is marked as hit, flip the value
             if (curr_gate->outputs[0]->SET_should_hit == 1) {
                 curr_gate->outputs[0]->value = !curr_gate->outputs[0]->value;
