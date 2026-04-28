@@ -8,8 +8,8 @@
 
 int main(int argc, char *argv[]) {
     long long soft_error_counter = 0;
-    long long strikes_counter = 0;
     double soft_error_rate = 0.0;
+    long long hittable_gates_count = 0;
 
     if (argc < 2) {
         printf("Usage: %s <path/to/file.v>\n", argv[0]);
@@ -71,6 +71,18 @@ int main(int argc, char *argv[]) {
         golden_dff_inputs_array->size++;
     }
 
+    // Find the number of hittable gates
+    for (int i = 0; i < gates_array->size; i++) {
+        Gate *curr_gate = gates_array->data[i];
+
+        // Ignore FFs, gates connected to FFs, or gates connected to primary outputs
+        if (curr_gate->type == TYPE_DFF || curr_gate->outputs[0]->is_ff_input == 1 || curr_gate->outputs[0]->type == TYPE_OUTPUT) {
+            continue;
+        }
+
+        hittable_gates_count++;
+    }
+
     // Simulate the circuit with all input vectors
     long long int max_vectors = pow(2, primary_inputs_array->size);
 
@@ -128,9 +140,6 @@ int main(int argc, char *argv[]) {
             // Run the simulation to consider if a soft error is propagated
             simulateCircuit(levels_array);
 
-            // Increment strikes counter
-            strikes_counter++;
-
             // Compare new and old DFF inputs
             for (int k = 0; k < golden_dff_inputs_array->size; k++) {
                 Node *golden_dff_input = golden_dff_inputs_array->data[k];
@@ -161,7 +170,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Calculate Soft Error Rate
-    soft_error_rate = soft_error_counter / (pow(2, primary_inputs_array->size) * strikes_counter);
+    soft_error_rate = soft_error_counter / (pow(2, primary_inputs_array->size) * hittable_gates_count);
 
     printf("SER: %f\nCounter: %lld\n", soft_error_rate, soft_error_counter);
 
