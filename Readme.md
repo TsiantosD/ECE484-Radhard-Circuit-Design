@@ -38,8 +38,9 @@ The `src` directory contains the source code of the simulator written in C. The 
 1. **The parser**: it is responsible for reading a verilog file containing post synthesis verilog. It initializes the structs and populates the related data structures, preparing them for step 2.
 2. **Levelization**: gets an array of gates and levelizes them using a levelization algorithm. Marks each gate with a level and then stores that gate to the related array in the levels array data structure.
 > **_Note_**: the flip flops are marked with a level for visualization purposes but are not saved in the levels array data structure.
-3. **Simulation**: once the gates are levelized, the simulation can begin. The simulation runs for all input vectors, one level at a time, calculating the output of each gante.
+3. **Simulation**: once the gates are levelized, the simulation can begin. The simulation runs for all input vectors, one level at a time, calculating the output of each gate.
 > **_Note_**: Flip flops have a constant output of `0` for `ZN` and `1` for `Z` outputs.
+4. **Soft Error Rate (SER)**: for each simulation, some selected gates will be "hit". Those gates should i) not be DFFs ii) not be connected directly to DFFs and iii) not be connected directly to a primary output. The "hit" is a bit-flip of the output. For each gate hit, the simulation re-runs. If after a simulation an error has been propagated to a DFF, this specific steady state is skipped, the soft errors counter is incremented and the next steady state is simulated. The Soft Error Rate is calculated as the number of steady states with at least one soft error, over the number of steady states multiplied by the number of possible gates that can be hit, i.e. the gates that satisfy the three criteria - i, ii, iii.
 
 ### Validation
 **To validate the correctness of our simulator**, the `run.sh` script compares the C simulation results with the verilog simulation results.
