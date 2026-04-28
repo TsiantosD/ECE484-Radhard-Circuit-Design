@@ -92,7 +92,7 @@ fi
 # 3. Run the C Simulator
 echo "-> Running C simulation..."
 # Redirecting standard output to nodes.csv and standard error to levels.csv
-./src/main "$V_FILE" > "$C_NODES_OUT" 2> "$C_LEVELS_OUT"
+./src/main "$V_FILE" "$C_NODES_OUT" "$C_LEVELS_OUT"
 echo "-> C simulation nodes saved to $C_NODES_OUT"
 echo "-> C simulation levels saved to $C_LEVELS_OUT"
 

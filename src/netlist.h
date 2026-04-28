@@ -2,6 +2,7 @@
 #define ECE484_RADHARD_CIRCUIT_DESIGN_NETLIST_H
 
 #include <string.h>
+#include <stdio.h>
 
 typedef struct Node_t {
     char name[16];
@@ -36,8 +37,8 @@ typedef struct NodesArray_t {
     int size;
 } NodesArray;
 
-void printNodesCurrentState(long long int input_vector, NodesArray *primary_inputs, NodesArray *nodes);
-void printLevelsArrayStateCsv(LevelsArray *levels_array, GatesArray *gates_array, long long int input_vector);
+void printNodesCurrentState(FILE *fp, long long int input_vector, NodesArray *primary_inputs, NodesArray *nodes);
+void printLevelsArrayStateCsv(FILE *fp, LevelsArray *levels_array, GatesArray *gates_array, long long int input_vector);
 void printLevelsArray(LevelsArray *levels_array);
 void printGatesArray(GatesArray *gates_array);
 

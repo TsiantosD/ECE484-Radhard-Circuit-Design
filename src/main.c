@@ -18,6 +18,25 @@ int main(int argc, char *argv[]) {
 
     char *pathname = argv[1];
 
+    FILE *nodes_fp = NULL;
+    FILE *levels_fp = NULL;
+
+    // Only open the nodes CSV if a 2nd argument is provided
+    if (argc >= 3) {
+        nodes_fp = fopen(argv[2], "w");
+        if (!nodes_fp) {
+            perror("Warning: Failed to open nodes CSV file");
+        }
+    }
+
+    // Only open the levels CSV if a 3rd argument is provided
+    if (argc >= 4) {
+        levels_fp = fopen(argv[3], "w");
+        if (!levels_fp) {
+            perror("Warning: Failed to open levels CSV file");
+        }
+    }
+
     // Initialize nodes (internal and primary outputs)
     NodesArray *nodes_array = (NodesArray*)calloc(1, sizeof(NodesArray));
     if (nodes_array == NULL) {
@@ -96,11 +115,11 @@ int main(int argc, char *argv[]) {
         // Normal simulation to get the steady state
         simulateCircuit(levels_array);
 
-        // Display the nodes for verification purposes
-        printNodesCurrentState(input_vector, primary_inputs_array, nodes_array);
+        // Display the nodes for verification purposes to the file
+        printNodesCurrentState(nodes_fp, input_vector, primary_inputs_array, nodes_array);
 
-        // Display the current circuit's state for visualization purposes
-        printLevelsArrayStateCsv(levels_array, gates_array, input_vector);
+        // Display the current circuit's state for visualization purposes to the file
+        printLevelsArrayStateCsv(levels_fp, levels_array, gates_array, input_vector);
 
         // Copy correct DFF input values to golden array
         for (int j = 0, c = 0; j < nodes_array->size; j++) {
@@ -169,13 +188,17 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // Close the files
+    fclose(nodes_fp);
+    fclose(levels_fp);
+
     // Calculate Soft Error Rate
     soft_error_rate = soft_error_counter / (pow(2, primary_inputs_array->size) * hittable_gates_count);
 
-    printf("Total simulations: %d\n", pow(2, primary_inputs_array->size));
-    printf("Number of gates to be hit: %d\n", hittable_gates_count);
+    printf("Total simulations: %d\n", (int)pow(2, primary_inputs_array->size));
+    printf("Number of gates to be hit: %lld\n", hittable_gates_count);
     printf("Number of simulations with Soft Error(s): %lld\n", soft_error_counter);
-    printf("SER: %.2f\%\n", soft_error_rate * 100);
+    printf("SER: %.2f%%\n", soft_error_rate * 100.0);
 
     // Clean up
     for (int i = 0; i < golden_dff_inputs_array->size; i++) {

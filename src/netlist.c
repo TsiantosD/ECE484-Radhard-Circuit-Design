@@ -4,10 +4,12 @@
 #include "parser.h"
 
 
-void printNodesCurrentState(long long int input_vector, NodesArray *primary_inputs, NodesArray *nodes) {
+void printNodesCurrentState(FILE *fp, long long int input_vector, NodesArray *primary_inputs, NodesArray *nodes) {
+    if (fp == NULL) return;
+
     // Print the header exactly once
     if (input_vector == 0) {
-        printf("VEC");
+        fprintf(fp, "VEC");
 
         // Print all primary input names
         for (int i = 0; i < primary_inputs->size; i++) {
@@ -18,7 +20,7 @@ void printNodesCurrentState(long long int input_vector, NodesArray *primary_inpu
             
             if (strlen(clean_name) == 0) continue;
             
-            printf(",%s", clean_name);
+            fprintf(fp, ",%s", clean_name);
         }
 
         // Print all internal wire/output names
@@ -30,13 +32,12 @@ void printNodesCurrentState(long long int input_vector, NodesArray *primary_inpu
             
             if (strlen(clean_name) == 0) continue;
             
-            printf(",%s", clean_name);
+            fprintf(fp, ",%s", clean_name);
         }
-        printf("\n");
+        fprintf(fp, "\n");
     }
 
-    // Print the values
-    printf("%lld", input_vector);
+    fprintf(fp, "%lld", input_vector);
     for (int i = 0; i < primary_inputs->size; i++) {
         char clean_name[128];
         strncpy(clean_name, primary_inputs->data[i]->name, sizeof(clean_name) - 1);
@@ -45,7 +46,7 @@ void printNodesCurrentState(long long int input_vector, NodesArray *primary_inpu
         
         if (strlen(clean_name) == 0) continue; 
         
-        printf(",%d", primary_inputs->data[i]->value);
+        fprintf(fp, ",%d", primary_inputs->data[i]->value);
     }
     
     for (int i = 0; i < nodes->size; i++) {
@@ -56,12 +57,14 @@ void printNodesCurrentState(long long int input_vector, NodesArray *primary_inpu
         
         if (strlen(clean_name) == 0) continue; 
         
-        printf(",%d", nodes->data[i]->value);
+        fprintf(fp, ",%d", nodes->data[i]->value);
     }
-    printf("\n");
+    fprintf(fp, "\n");
 }
 
-void printLevelsArrayStateCsv(LevelsArray *levels_array, GatesArray *gates_array, long long int input_vector) {
+void printLevelsArrayStateCsv(FILE *fp, LevelsArray *levels_array, GatesArray *gates_array, long long int input_vector) {
+    if (fp == NULL) return;
+
     if (levels_array == NULL || levels_array->data == NULL) {
         if (input_vector == 0) {
             fprintf(stderr, "ERROR,Levels array is empty or uninitialized.\n");
@@ -70,7 +73,7 @@ void printLevelsArrayStateCsv(LevelsArray *levels_array, GatesArray *gates_array
     }
 
     if (input_vector == 0) {
-        fprintf(stderr, "VECTOR,LEVEL,GATE_NAME,GATE_TYPE,INPUTS(name=val),OUTPUTS(name=val)\n");
+        fprintf(fp, "VECTOR,LEVEL,GATE_NAME,GATE_TYPE,INPUTS(name=val),OUTPUTS(name=val)\n");
     }
 
     if (gates_array != NULL && gates_array->data != NULL) {
@@ -113,7 +116,7 @@ void printLevelsArrayStateCsv(LevelsArray *levels_array, GatesArray *gates_array
                     strcpy(outputs_buf, "NONE");
                 }
 
-                fprintf(stderr, "%lld,%d,%s,%d,%s,%s\n", 
+                fprintf(fp, "%lld,%d,%s,%d,%s,%s\n", 
                        (long long int)input_vector,
                        curr_gate->level,
                        curr_gate->name, 
@@ -173,7 +176,7 @@ void printLevelsArrayStateCsv(LevelsArray *levels_array, GatesArray *gates_array
                 strcpy(outputs_buf, "NONE");
             }
 
-            fprintf(stderr, "%lld,%d,%s,%d,%s,%s\n", 
+            fprintf(fp, "%lld,%d,%s,%d,%s,%s\n", 
                    input_vector,
                    i+1,
                    curr_gate->name, 
