@@ -172,7 +172,10 @@ int main(int argc, char *argv[]) {
     // Calculate Soft Error Rate
     soft_error_rate = soft_error_counter / (pow(2, primary_inputs_array->size) * hittable_gates_count);
 
-    printf("SER: %f\nCounter: %lld\n", soft_error_rate, soft_error_counter);
+    printf("Total simulations: %d\n", pow(2, primary_inputs_array->size));
+    printf("Number of gates to be hit: %d\n", hittable_gates_count);
+    printf("Number of simulations with Soft Error(s): %lld\n", soft_error_counter);
+    printf("SER: %.2f\%\n", soft_error_rate * 100);
 
     // Clean up
     for (int i = 0; i < golden_dff_inputs_array->size; i++) {
