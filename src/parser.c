@@ -202,8 +202,8 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
                     new_gate->no_inputs = 1;
                 } else {
                     // Parse number of inputs from instance name (e.g.:NAND10_X1 -> 10 inputs)
-                    char no_inputs_str[16];
-                    no_inputs_str[15] = '\0';
+                    char no_inputs_str[20];
+                    no_inputs_str[19] = '\0';
                     int i = 0;
                     int j = 0;
 
@@ -297,8 +297,15 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
 
                     // When input of DFF is found, mark it
                     if (type == TYPE_DFF) {
+                        if (curr_node == NULL) {
+                            printf("%s %s\n", token, node_name);
+                            printf("%s\n", nodes_array->data[6]->name);
+                        }
                         curr_node->is_ff_input = 1;
                     } else {
+                        if (curr_node == NULL) {
+                            printf("%s\n", token);
+                        }
                         curr_node->is_ff_input = 0;
                     }
 

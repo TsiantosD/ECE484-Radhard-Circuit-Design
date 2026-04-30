@@ -9,7 +9,7 @@
 int main(int argc, char *argv[]) {
     long long soft_error_counter = 0;
     double soft_error_rate = 0.0;
-    long long hittable_gates_count = 0;
+    long long hit_gates_counter = 0;
 
     if (argc < 2) {
         printf("Usage: %s <path/to/file.v>\n", argv[0]);
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
         golden_dff_inputs_array->size++;
     }
 
-    // Find the number of hittable gates
+    // Find the number of gates to be hit
     for (int i = 0; i < gates_array->size; i++) {
         Gate *curr_gate = gates_array->data[i];
 
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        hittable_gates_count++;
+        hit_gates_counter++;
     }
 
     // Simulate the circuit with all input vectors
@@ -127,8 +127,8 @@ int main(int argc, char *argv[]) {
 
             if (curr_node->is_ff_input == 1) {
                 golden_dff_inputs_array->data[c]->value = curr_node->value;
-                strncpy(golden_dff_inputs_array->data[c]->name, curr_node->name, 16);
-                golden_dff_inputs_array->data[c]->name[15] = '\0';
+                strncpy(golden_dff_inputs_array->data[c]->name, curr_node->name, 20);
+                golden_dff_inputs_array->data[c]->name[19] = '\0';
                 golden_dff_inputs_array->data[c]->type = curr_node->type;
                 golden_dff_inputs_array->data[c]->level = curr_node->level;
                 golden_dff_inputs_array->data[c]->SET_should_hit = 0;
@@ -137,15 +137,8 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // Hit each gate not connected directly to a DFF. If at least one soft error is found,
-        // skip this steady state and continue to the next one.
-        int soft_error_found = 0;
-
+        // Hit each gate not connected directly to a DFF
         for (int j = 0; j < gates_array->size; j++) {
-            if (soft_error_found == 1) {
-                break;
-            }
-
             Gate *curr_gate = gates_array->data[j];
 
             // Ignore FFs, gates connected to FFs, or gates connected to primary outputs
@@ -178,7 +171,6 @@ int main(int argc, char *argv[]) {
                 // Compare the two nodes
                 if (simulated_dff_input != NULL && simulated_dff_input->value != golden_dff_input->value) {
                     soft_error_counter++;
-                    soft_error_found = 1;
                     break;
                 }
             }
@@ -193,10 +185,10 @@ int main(int argc, char *argv[]) {
     fclose(levels_fp);
 
     // Calculate Soft Error Rate
-    soft_error_rate = soft_error_counter / (pow(2, primary_inputs_array->size) * hittable_gates_count);
+    soft_error_rate = soft_error_counter / (pow(2, primary_inputs_array->size) * hit_gates_counter);
 
-    printf("Total simulations: %d\n", (int)pow(2, primary_inputs_array->size));
-    printf("Number of gates to be hit: %lld\n", hittable_gates_count);
+    printf("Total simulations: %lld\n", (int)pow(2, primary_inputs_array->size) * hit_gates_counter);
+    printf("Number of hit gates: %lld\n", hit_gates_counter);
     printf("Number of simulations with Soft Error(s): %lld\n", soft_error_counter);
     printf("SER: %.2f%%\n", soft_error_rate * 100.0);
 
