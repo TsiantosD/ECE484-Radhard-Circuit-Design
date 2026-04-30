@@ -136,8 +136,8 @@ void parseAndCreateNodes(char *buffer, int type, NodesArray *nodes_array, NodesA
 
         // Create a new node
         Node *new_node = (Node*)calloc(1, sizeof(Node));
-        strncpy(new_node->name, token, 16);
-        new_node->name[15] = '\0';
+        strncpy(new_node->name, token, 20);
+        new_node->name[19] = '\0';
         new_node->type = type;
         new_node->value = 0;
         new_node->level = (new_node->type == TYPE_INPUT) ? 0 : -1;
@@ -225,8 +225,8 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
             // Get second token (instance name)
             case 1:
                 // Parse name
-                strncpy(new_gate->name, token, 16);
-                new_gate->name[15] = '\0';
+                strncpy(new_gate->name, token, 20);
+                new_gate->name[19] = '\0';
                 token_countdown--;
 
                 break;

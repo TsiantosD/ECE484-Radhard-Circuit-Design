@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 typedef struct Node_t {
-    char name[16];
+    char name[20];
     int value;
     unsigned short int type;
     int level;
@@ -14,7 +14,7 @@ typedef struct Node_t {
 } Node;
 
 typedef struct Gate_t {
-    char name[16];
+    char name[20];
     unsigned short int type;
     int no_inputs;
     int level;
