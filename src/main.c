@@ -11,8 +11,8 @@ int main(int argc, char *argv[]) {
     double soft_error_rate = 0.0;
     long long hit_gates_counter = 0;
 
-    if (argc < 2) {
-        printf("Usage: %s <path/to/file.v>\n", argv[0]);
+    if (argc < 4) {
+        printf("Usage: %s <path/to/file.v> <path/to/file.csv> <path/to/file.csv>\n", argv[0]);
         return 1;
     }
 
