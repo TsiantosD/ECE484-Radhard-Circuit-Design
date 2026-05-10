@@ -1,4 +1,4 @@
-## Circuit Simulator
+## Soft Error Rate (SER) Simulator
 
 ### Authors
 
