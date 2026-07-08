@@ -5,3 +5,4 @@ test
 *.out
 *.sim
 *.csv
+timing_logs/

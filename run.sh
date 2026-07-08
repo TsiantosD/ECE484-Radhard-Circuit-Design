@@ -5,39 +5,132 @@
 # ========================================
 
 show_help() {
-    echo "Usage: ./run.sh [OPTIONS] [TEST_NAME]"
+    echo "Usage: ./run.sh [OPTIONS] [TEST_NAME] [-- PROGRAM_ARGS...]"
     echo ""
     echo "This script builds and runs the C simulator, compares its output"
     echo "against the Verilog golden model, and optionally generates circuit SVGs."
     echo ""
     echo "Options:"
-    echo "  -h, --help       Show this help message and exit."
-    echo "  -v, --visualize  Run the Python visualizer on the generated levels CSV."
+    echo "  -h, --help                 Show this help message and exit."
+    echo "  -v, --visualize            Run the Python visualizer on the generated levels CSV."
+    echo "  --backend legacy|x86|flat|cuda"
+    echo "                             Build and run for the selected backend (default: x86)."
+    echo "  --build-target TARGET      Make target to use in src/ (default: all; e.g. sanitize, fast)."
+    echo "  --make-arg ARG             Extra argument passed to make, e.g. --make-arg CFLAGS='-O2 -g'."
+    echo "  --program-arg ARG          Extra argument passed to ./src/main. Can be repeated."
+    echo "  --no-csv                   Send nodes/levels CSV output to /dev/null; useful for large HPC runs."
+    echo "  --                         Everything after -- is passed to ./src/main."
     echo ""
-    echo "Example:"
-    echo "  ./run.sh -v s27  # Runs test 's27' and generates SVGs."
-    echo "  ./run.sh         # Interactive mode (prompts for test selection)."
+    echo "Examples:"
+    echo "  ./run.sh -v s27"
+    echo "  ./run.sh --backend x86 --build-target fast s298"
+    echo "  ./run.sh --backend cuda --build-target fast s27 -- --cuda-blocks 256"
+    echo "  ./run.sh                    # Interactive mode (prompts for test selection)."
 }
 
 VISUALIZE=false
 TEST_NAME=""
+BACKEND="x86"
+BUILD_TARGET="all"
+MAKE_ARGS=()
+PROGRAM_ARGS=()
+OUTPUT_CSV=true
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        -h|--help) show_help; exit 0 ;;
-        -v|--visualize) VISUALIZE=true; shift ;;
-        -*) echo "Error: Unknown parameter passed: $1"; echo "Use --help for usage."; exit 1 ;;
-        *) TEST_NAME="$1"; shift ;; # Positional argument (Test Name)
+    case "$1" in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -v|--visualize)
+            VISUALIZE=true
+            shift
+            ;;
+        --backend)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --backend requires x86 or cuda."
+                exit 1
+            fi
+            BACKEND="$2"
+            shift 2
+            ;;
+        --backend=*)
+            BACKEND="${1#*=}"
+            shift
+            ;;
+        --build-target|--make-target)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: $1 requires a make target."
+                exit 1
+            fi
+            BUILD_TARGET="$2"
+            shift 2
+            ;;
+        --build-target=*|--make-target=*)
+            BUILD_TARGET="${1#*=}"
+            shift
+            ;;
+        --make-arg)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --make-arg requires an argument."
+                exit 1
+            fi
+            MAKE_ARGS+=("$2")
+            shift 2
+            ;;
+        --make-arg=*)
+            MAKE_ARGS+=("${1#*=}")
+            shift
+            ;;
+        --program-arg)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --program-arg requires an argument."
+                exit 1
+            fi
+            PROGRAM_ARGS+=("$2")
+            shift 2
+            ;;
+        --program-arg=*)
+            PROGRAM_ARGS+=("${1#*=}")
+            shift
+            ;;
+        --no-csv|--summary-only)
+            OUTPUT_CSV=false
+            shift
+            ;;
+        --)
+            shift
+            PROGRAM_ARGS+=("$@")
+            break
+            ;;
+        -*)
+            echo "Error: Unknown parameter passed: $1"
+            echo "Use --help for usage."
+            exit 1
+            ;;
+        *)
+            if [[ -z "$TEST_NAME" ]]; then
+                TEST_NAME="$1"
+            else
+                PROGRAM_ARGS+=("$1")
+            fi
+            shift
+            ;;
     esac
 done
 
+if [[ "$BACKEND" != "x86" && "$BACKEND" != "legacy" && "$BACKEND" != "flat" && "$BACKEND" != "cuda" ]]; then
+    echo "Error: unsupported backend '$BACKEND'. Use legacy, x86, flat, or cuda."
+    exit 1
+fi
+
 # 1. Build the C simulator
 echo "========================================"
-echo "Building C Simulator..."
+echo "Building C Simulator ($BACKEND, target: $BUILD_TARGET)..."
 echo "========================================"
 make clean -C src
-make sanitize -C src || { echo "Make failed in src/"; exit 1; }
+make -C src "$BUILD_TARGET" BACKEND="$BACKEND" "${MAKE_ARGS[@]}" || { echo "Make failed in src/"; exit 1; }
 
 # 2. Select the test
 # If no test name was provided via positional arguments, prompt the user
@@ -82,7 +175,13 @@ C_NODES_OUT="$OUT_DIR/nodes.csv"
 C_LEVELS_OUT="$OUT_DIR/levels.csv"
 
 # Ensure circuit specific outputs directory exists
-mkdir -p "$OUT_DIR"
+if [ "$OUTPUT_CSV" = true ]; then
+    mkdir -p "$OUT_DIR"
+else
+    C_NODES_OUT="/dev/null"
+    C_LEVELS_OUT="/dev/null"
+    echo "CSV output disabled: nodes/levels output will be discarded."
+fi
 
 if [ ! -f "$V_FILE" ]; then
     echo "Error: Verilog file $V_FILE not found!"
@@ -92,14 +191,19 @@ fi
 # 3. Run the C Simulator
 echo "-> Running C simulation..."
 # Redirecting standard output to nodes.csv and standard error to levels.csv
-./src/main "$V_FILE" "$C_NODES_OUT" "$C_LEVELS_OUT"
+if ! ./src/main "$V_FILE" "$C_NODES_OUT" "$C_LEVELS_OUT" --backend "$BACKEND" "${PROGRAM_ARGS[@]}"; then
+    echo "Error: C simulation failed."
+    exit 1
+fi
 echo "-> C simulation nodes saved to $C_NODES_OUT"
 echo "-> C simulation levels saved to $C_LEVELS_OUT"
 
 # 4. Build and run the Verilog Golden Model
 echo ""
 echo "-> Building and running Verilog simulation..."
-if [ -f "$TEST_DIR/Makefile" ]; then
+if ! command -v iverilog >/dev/null 2>&1; then
+    echo "   [!] iverilog not found. Skipping Verilog build and using existing golden CSV if present."
+elif [ -f "$TEST_DIR/Makefile" ]; then
     # Run make inside the specific test directory
     make -C "$TEST_DIR"
 else
@@ -123,7 +227,12 @@ if [ ! -f "$V_OUT" ]; then
     fi
 fi
 
-if [ -f "$V_OUT" ]; then
+if [ "$BACKEND" = "cuda" ]; then
+    echo "   [!] CUDA backend intentionally does not write per-vector nodes.csv."
+    echo "       Skipping nodes.csv vs golden CSV diff; validate CUDA by comparing SER counters against legacy/flat runs."
+elif [ "$OUTPUT_CSV" != true ]; then
+    echo "   [!] CSV output disabled (--no-csv); skipping nodes.csv vs golden CSV diff."
+elif [ -f "$V_OUT" ]; then
     echo "Comparing C output ($C_NODES_OUT) against Verilog golden model ($V_OUT)..."
     
     # Run the diff. -q checks if they are identical silently.

@@ -234,6 +234,7 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
             // Parse the arguments
             case 0:
             default:
+            {
                 int is_output;
                 Node *curr_node = NULL;
                 char *argument_name = NULL;
@@ -313,6 +314,7 @@ void parseAndCreateGate(char *buffer, int type, NodesArray *nodes_array,
                     inputs_index++;
                 }
                 break;
+            }
         }
 
         if (token_countdown == 2 || token_countdown == 1) {
